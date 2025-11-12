@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sade Mesaj — PWA</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0e1628">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Sade Mesaj">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    :root{ --bg:#0b1220; --panel:#0f172a; --accent:#8b5cf6; --text:#e5e7eb; --muted:#94a3b8; --border:rgba(255,255,255,.08); }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{ margin:0; background:radial-gradient(120% 120% at 50% 10%, #0f1b3c 0%, #0b1220 60%);
+      color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;
+      display:flex; align-items:stretch; justify-content:center; padding:12px; }
+    .app{ width:100%; max-width:680px; display:flex; flex-direction:column; border:1px solid var(--border);
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06)); border-radius:16px; overflow:hidden; }
+    header{display:flex; align-items:center; gap:10px; padding:12px 14px; background:rgba(255,255,255,.03); border-bottom:1px solid var(--border)}
+    header h1{font-size:16px; margin:0; flex:1; letter-spacing:.2px}
+    header .room{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:var(--muted)}
+    header button, .toolbar button{ background:transparent; color:var(--text); border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-weight:600; }
+    .toolbar{display:flex; gap:8px; padding:8px 12px; border-bottom:1px solid var(--border); background:rgba(0,0,0,.15)}
+    .msgs{ flex:1; overflow:auto; padding:12px; display:flex; flex-direction:column; gap:10px; }
+    .bubble{ max-width:80%; padding:10px 12px; border-radius:14px; line-height:1.35; word-wrap:break-word; white-space:pre-wrap }
+    .me{ align-self:flex-end; background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.35) }
+    .them{ align-self:flex-start; background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.35) }
+    .composer{display:flex; gap:8px; padding:10px; border-top:1px solid var(--border); background:rgba(255,255,255,.02)}
+    .composer input{flex:1; padding:12px; border-radius:12px; border:1px solid var(--border); background:#0b1428; color:var(--text); font-size:16px}
+    .composer button{padding:12px 14px; border-radius:12px; border:none; font-weight:700; background:var(--accent); color:white}
+    .hint{font-size:12px; color:var(--muted); padding:6px 12px}
+    dialog{ border:none; border-radius:16px; background:#0f172a; color:var(--text); width:min(92vw,560px); }
+    dialog .box{ padding:16px 18px; }
+    input[type='text'].mono{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
+    a{ color:#9ec5ff; text-decoration:none }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Sade Mesaj</h1>
+      <div class="room" id="roomInfo">oda: yok</div>
+      <button id="btnNew">Yeni Oda</button>
+      <button id="btnInvite">Davet</button>
+      <button id="btnSettings">Ayarlar</button>
+    </header>
+
+    <div class="toolbar">
+      <div class="hint">Bu taslak çevrimdışı çalışır. Firebase ekleyince odadaki herkes mesajları görür.</div>
+    </div>
+
+    <div id="msgs" class="msgs"></div>
+
+    <div class="composer">
+      <input id="text" placeholder="Mesaj yaz..." autocomplete="off">
+      <button id="send">Gönder</button>
+    </div>
+  </div>
+
+  <dialog id="dlg">
+    <div class="box">
+      <h3>Oda & Davet</h3>
+      <p>Oda ID’si, linke eklenen gizli bir değerdir. Linki sadece göndermek istediğin kişiye ver.</p>
+      <div class="row">
+        <label>Oda ID</label>
+        <input id="roomIdField" class="mono" type="text" readonly>
+      </div>
+      <p class="hint">Firebase kurulduğunda, oda üyelerini tanımlayıp sadece üyelerin okuma/yazmasına izin vereceğiz.</p>
+      <hr>
+      <h3>Firebase (sonraki adım)</h3>
+      <p>Config’i <code>firebase-config.js</code> içine koy, sonra index.html’de yorumdaki scriptleri aç.</p>
+      <p><a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">Firebase Console</a></p>
+      <button id="closeDlg">Kapat</button>
+    </div>
+  </dialog>
+
+  <script>
+    const qs = new URLSearchParams(location.hash.slice(1));
+    let roomId = qs.get('room') || '';
+    const msgsEl = document.getElementById('msgs');
+    const textEl = document.getElementById('text');
+    const sendBtn = document.getElementById('send');
+    const roomInfo = document.getElementById('roomInfo');
+    const dlg = document.getElementById('dlg');
+    const roomIdField = document.getElementById('roomIdField');
+
+    function randomId(len=10){ const abc='abcdefghijklmnopqrstuvwxyz0123456789'; let s=''; for(let i=0;i<len;i++) s+=abc[Math.floor(Math.random()*abc.length)]; return s; }
+    function setRoom(id){ roomId = id || randomId(12); location.hash = '#room=' + roomId; roomInfo.textContent='oda: '+roomId; roomIdField.value=roomId; loadLocal(); }
+    function loadLocal(){ msgsEl.innerHTML=''; const data = JSON.parse(localStorage.getItem('chat_'+roomId)||'[]'); for(const m of data){ addBubble(m.text, m.me, m.ts, false); } scrollBottom(); }
+    function saveLocal(){ const bubbles=[...msgsEl.querySelectorAll('.bubble')].map(el=>({ text:el.dataset.text, me:el.classList.contains('me'), ts:Number(el.dataset.ts||Date.now()) })); localStorage.setItem('chat_'+roomId, JSON.stringify(bubbles)); }
+    function addBubble(text, me=true, ts=Date.now(), save=true){ const div=document.createElement('div'); div.className='bubble '+(me?'me':'them'); div.textContent=text; div.dataset.text=text; div.dataset.ts=ts; msgsEl.appendChild(div); if(save) saveLocal(); }
+    function scrollBottom(){ msgsEl.scrollTop = msgsEl.scrollHeight; }
+    if(!roomId){ setRoom(randomId(12)); } else { setRoom(roomId); }
+    sendBtn.addEventListener('click', ()=>{ const txt=(textEl.value||'').trim(); if(!txt) return; addBubble(txt,true); textEl.value=''; scrollBottom(); /* Firebase eklenince: sendToCloud(roomId, txt) */ });
+    textEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ sendBtn.click(); } });
+    document.getElementById('btnNew').addEventListener('click', ()=> setRoom(randomId(12)));
+    document.getElementById('btnInvite').addEventListener('click', ()=>{ const url = location.origin + location.pathname + '#room=' + roomId; navigator.clipboard.writeText(url).then(()=>alert('Davet linki kopyalandı:\n'+url), ()=>{ prompt('Bu linki kopyala', url); }); });
+    document.getElementById('btnSettings').addEventListener('click', ()=> dlg.showModal());
+    document.getElementById('closeDlg').addEventListener('click', ()=> dlg.close());
+    if('serviceWorker' in navigator){ window.addEventListener('load', ()=> navigator.serviceWorker.register('./service-worker.js')); }
+  </script>
+
+  <!-- Firebase entegrasyonu için (aktif etmek için yorumdan çıkarın)
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./firebase-app.js"></script>
+  -->
+</body>
+</html>
