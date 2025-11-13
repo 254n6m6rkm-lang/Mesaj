@@ -167,6 +167,18 @@ async function deleteMessage(roomId, msgId) {
   await ref.delete();
 }
 
+// ✅ Oda ismi değiştirme
+async function renameRoom(roomId, newName) {
+  const name = newName && newName.trim() ? newName.trim() : null;
+  if (!name) return;
+  await getRoomRef(roomId).set(
+    {
+      roomName: name,
+    },
+    { merge: true }
+  );
+}
+
 window.chatApi = {
   ensureAuth,
   createRoomWithName,
@@ -177,6 +189,7 @@ window.chatApi = {
   updateMessage,
   deleteMessage,
   getDisplayName,
+  renameRoom, // 👈 yeni ekledik
 };
 
 console.log("[BATUCHAT] firebase-app hazır");
