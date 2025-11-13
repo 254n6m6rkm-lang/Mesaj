@@ -1,153 +1,21 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sade Mesaj — PWA</title>
+  <meta charset="UTF-8">
+  <title>Mesaj PWA</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0e1628">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Sade Mesaj">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <style>
-    :root{ --bg:#0b1220; --panel:#0f172a; --accent:#8b5cf6; --text:#e5e7eb; --muted:#94a3b8; --border:rgba(255,255,255,.08); }
-    *{box-sizing:border-box} html,body{height:100%}
-    body{ margin:0; background:radial-gradient(120% 120% at 50% 10%, #0f1b3c 0%, #0b1220 60%);
-      color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;
-      display:flex; align-items:stretch; justify-content:center; padding:12px; }
-    .app{ width:100%; max-width:680px; display:flex; flex-direction:column; border:1px solid var(--border);
-      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06)); border-radius:16px; overflow:hidden; }
-    header{display:flex; align-items:center; gap:10px; padding:12px 14px; background:rgba(255,255,255,.03); border-bottom:1px solid var(--border)}
-    header h1{font-size:16px; margin:0; flex:1; letter-spacing:.2px}
-    header .room{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:var(--muted)}
-    header button{ background:transparent; color:var(--text); border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-weight:600; }
-    .msgs{ flex:1; overflow:auto; padding:12px; display:flex; flex-direction:column; gap:10px; }
-    .bubble{ max-width:80%; padding:10px 12px; border-radius:14px; line-height:1.35; word-wrap:break-word; white-space:pre-wrap }
-    .me{ align-self:flex-end; background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.35) }
-    .them{ align-self:flex-start; background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.35) }
-    .composer{display:flex; gap:8px; padding:10px; border-top:1px solid var(--border); background:rgba(255,255,255,.02)}
-    .composer input{flex:1; padding:12px; border-radius:12px; border:1px solid var(--border); background:#0b1428; color:var(--text); font-size:16px}
-    .composer button{padding:12px 14px; border-radius:12px; border:none; font-weight:700; background:var(--accent); color:white}
-    .hint{font-size:12px; color:var(--muted); padding:6px 12px}
-  </style>
+  <meta name="theme-color" content="#111827">
 </head>
 <body>
-  <div class="app">
-    <header>
-      <h1>Sade Mesaj</h1>
-      <div class="room" id="roomInfo">oda: yok</div>
-      <button id="btnNew">Yeni Oda</button>
-      <button id="btnInvite">Davet</button>
-    </header>
+  <h2>Mesaj PWA</h2>
+  <p>Dosyalar başarıyla yüklendi.</p>
 
-    <div id="msgs" class="msgs"></div>
-
-    <div class="composer">
-      <input id="text" placeholder="Mesaj yaz..." autocomplete="off">
-      <button id="send">Gönder</button>
-    </div>
-    <div class="hint">Not: Firebase bağlıysa aynı odada tüm cihazlarda gerçek zamanlı çalışır. Bağlı değilse yerel kayıt kullanır.</div>
-  </div>
-
-  <script>
-    // ---- Basic UI helpers ----
-    const msgsEl = document.getElementById('msgs');
-    const textEl = document.getElementById('text');
-    const sendBtn = document.getElementById('send');
-    const roomInfo = document.getElementById('roomInfo');
-
-    function addBubble(text, me, ts=Date.now()){
-      const div=document.createElement('div');
-      div.className='bubble '+(me?'me':'them');
-      div.textContent=text;
-      msgsEl.appendChild(div);
-      msgsEl.scrollTop = msgsEl.scrollHeight;
-    }
-
-    // ---- Room from URL hash ----
-    function randomId(len=12){ const abc='abcdefghijklmnopqrstuvwxyz0123456789'; let s=''; for(let i=0;i<len;i++) s+=abc[Math.floor(Math.random()*abc.length)]; return s; }
-    const qs = new URLSearchParams(location.hash.slice(1));
-    let roomId = qs.get('room') || '';
-    let joinKey = qs.get('join') || '';
-    function updateHash(){ const p=new URLSearchParams(); p.set('room',roomId); if(joinKey) p.set('join',joinKey); history.replaceState(null,'','#'+p.toString()); }
-    function setRoom(id){ roomId=id||randomId(12); roomInfo.textContent='oda: '+roomId; updateHash(); }
-
-    // ---- Local storage fallback ----
-    function loadLocal(){
-      msgsEl.innerHTML='';
-      const data = JSON.parse(localStorage.getItem('chat_'+roomId)||'[]');
-      for(const m of data){ addBubble(m.text, m.me, m.ts); }
-    }
-    function saveLocal(){
-      const arr=[...msgsEl.querySelectorAll('.bubble')].map(el=>({text:el.textContent, me:el.classList.contains('me'), ts: Date.now()}));
-      localStorage.setItem('chat_'+roomId, JSON.stringify(arr));
-    }
-
-    // ---- Firebase bridge detection ----
-    let usingFirebase = false;
-    let unsub = null;
-    function startRealtime(){
-      if(window.firebaseBridge && typeof window.firebaseBridge.subscribeRoom==='function'){
-        usingFirebase = true;
-        if(unsub) unsub();
-        unsub = window.firebaseBridge.subscribeRoom(roomId, (text, mine)=> addBubble(text, mine));
-      }else{
-        usingFirebase = false;
-        loadLocal();
-      }
-    }
-
-    // Init room
-    if(!roomId){ roomId = randomId(); joinKey = randomId(16); updateHash(); }
-    roomInfo.textContent='oda: '+roomId;
-
-    // Send
-    sendBtn.addEventListener('click', async ()=>{
-      const t=(textEl.value||'').trim(); if(!t) return;
-      textEl.value='';
-      if(usingFirebase && window.firebaseBridge && window.firebaseBridge.sendToCloud){
-        await window.firebaseBridge.sendToCloud(roomId, t);
-      }else{
-        addBubble(t, true); saveLocal();
-      }
-    });
-    textEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ sendBtn.click(); } });
-
-    // New room & invite
-    document.getElementById('btnNew').addEventListener('click', async ()=>{
-      roomId = randomId(); joinKey = randomId(16); updateHash();
-      if(usingFirebase && window.firebaseBridge && window.firebaseBridge.createRoom){
-        await window.firebaseBridge.createRoom(roomId, joinKey);
-      }
-      msgsEl.innerHTML=''; roomInfo.textContent='oda: '+roomId;
-      const url = location.origin + location.pathname + '#room='+roomId+'&join='+joinKey;
-      navigator.clipboard && navigator.clipboard.writeText(url).catch(()=>{});
-      alert('Yeni oda linki kopyalandı:\n'+url);
-    });
-    document.getElementById('btnInvite').addEventListener('click', ()=>{
-      const url = location.origin + location.pathname + '#room='+roomId+'&join='+joinKey;
-      navigator.clipboard.writeText(url).then(()=>alert('Davet linki kopyalandı:\n'+url), ()=>{ prompt('Bu linki kopyala', url); });
-    });
-
-    // Start
-    (async () => {
-      if('serviceWorker' in navigator){ window.addEventListener('load', ()=> navigator.serviceWorker.register('./service-worker.js')); }
-      try{
-        if(window.firebaseBridge && window.firebaseBridge.ensureAuth){
-          await window.firebaseBridge.ensureAuth();
-          if(joinKey && window.firebaseBridge.joinRoom){ await window.firebaseBridge.joinRoom(roomId, joinKey); }
-          if(window.firebaseBridge.getJoinKey){ joinKey = await window.firebaseBridge.getJoinKey(roomId) || joinKey; }
-        }
-      }catch(e){ console.warn('Firebase init error:', e); }
-      startRealtime();
-    })();
-  </script>
-
-  <!-- Firebase (compat) — aktif -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="./firebase-config.js"></script>
-  <script src="./firebase-app.js"></script>
+
+  <script src="firebase-config.js"></script>
+  <script src="firebase-app.js"></script>
 </body>
 </html>

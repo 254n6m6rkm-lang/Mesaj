@@ -1,4 +1,3 @@
-// firebase-config.js — Sade Mesaj uygulaması Firebase yapılandırması
 const firebaseConfig = {
   apiKey: "AIzaSyCGwyH9Ik8uhQeFJuCaZwA2emIm92eLWvI",
   authDomain: "mesaj-uygulamasi-2414d.firebaseapp.com",

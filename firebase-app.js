@@ -1,67 +1,48 @@
-// firebase-app.js — Mesaj PWA için Firebase köprüsü (Compat SDK)
-/* global firebase, firebaseConfig */
-
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-const db   = firebase.firestore();
+const db = firebase.firestore();
 
-function ensureAuth() {
-  return new Promise((resolve, reject) => {
-    if (auth.currentUser) return resolve(auth.currentUser);
-    const unsub = auth.onAuthStateChanged(() => {
-      unsub();
-      if (auth.currentUser) resolve(auth.currentUser);
-      else reject(new Error("Auth failed"));
-    });
-    auth.signInAnonymously().catch(reject);
-  });
+async function ensureAuth() {
+  if (auth.currentUser) return auth.currentUser;
+  await auth.signInAnonymously();
+  return auth.currentUser;
 }
 
-async function createRoom(roomId, joinKey) {
+async function createRoom(roomId) {
   const user = await ensureAuth();
   await db.collection('rooms').doc(roomId).set({
-    members: [user.uid],
-    joinKey: joinKey || null
+    createdAt: Date.now(),
+    members: firebase.firestore.FieldValue.arrayUnion(user.uid)
   }, { merge: true });
 }
 
-async function joinRoom(roomId, joinKey) {
+async function joinRoom(roomId) {
   const user = await ensureAuth();
-  const ref = db.collection('rooms').doc(roomId);
-  return db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists) throw new Error('Oda bulunamadı');
-    const data = snap.data() || {};
-    if (data.joinKey && data.joinKey !== joinKey) throw new Error('Davet anahtarı hatalı');
-    const members = Array.from(new Set([...(data.members || []), user.uid]));
-    tx.set(ref, { members }, { merge: true });
-  });
+  await db.collection('rooms').doc(roomId).set({
+    members: firebase.firestore.FieldValue.arrayUnion(user.uid)
+  }, { merge: true });
 }
 
-async function getJoinKey(roomId) {
-  const doc = await db.collection('rooms').doc(roomId).get();
-  if (doc.exists) return (doc.data() && doc.data().joinKey) || '';
-  return '';
-}
-
-function subscribeRoom(roomId, onMessage) {
-  return db.collection('rooms').doc(roomId).collection('messages')
-    .orderBy('ts','asc')
-    .onSnapshot((snap) => {
-      snap.docChanges().forEach((ch) => {
-        if (ch.type === 'added') {
-          const d = ch.doc.data();
-          const mine = !!(auth.currentUser && d.uid === auth.currentUser.uid);
-          onMessage(d.text, mine, d.ts || Date.now());
+function subscribeRoom(roomId, callback) {
+  return db.collection('rooms').doc(roomId)
+    .collection('messages').orderBy("ts")
+    .onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(change => {
+        if (change.type === "added") {
+          const data = change.doc.data();
+          callback(data.text, data.uid === auth.currentUser?.uid, data.ts);
         }
       });
-    }, (err) => console.error('subscribeRoom error:', err));
+    });
 }
 
 async function sendToCloud(roomId, text) {
   const user = await ensureAuth();
-  await db.collection('rooms').doc(roomId).collection('messages').add({ text: String(text), uid: user.uid, ts: Date.now() });
+  await db.collection("rooms").doc(roomId).collection("messages").add({
+    text: text,
+    uid: user.uid,
+    ts: Date.now()
+  });
 }
 
-window.firebaseBridge = { ensureAuth, createRoom, joinRoom, getJoinKey, subscribeRoom, sendToCloud };
-console.log('[firebase-app] hazır: auth & firestore başlatıldı');
+window.chatApi = { ensureAuth, createRoom, joinRoom, subscribeRoom, sendToCloud };

@@ -1,21 +1,9 @@
 {
-  "name": "Sade Mesaj",
+  "name": "Mesaj PWA",
   "short_name": "Mesaj",
-  "start_url": ".",
-  "scope": ".",
+  "start_url": "/Mesaj/",
   "display": "standalone",
-  "background_color": "#0b1220",
-  "theme_color": "#0e1628",
-  "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": []
 }
