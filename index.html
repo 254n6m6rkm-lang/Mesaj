@@ -5,21 +5,11 @@
   <title>Adnan Tatlı Taşeron - Maaş Takip</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Firebase (compat, global "firebase" değişkeni) -->
-  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
-  <!-- DevTools için; prod'da silebilirsin -->
-  <script>
-    window.firebaseConfig = {
-      apiKey: "AIzaSyC-QMxijBfAcJioE_1f6X-upKaIuEvL8oc",
-      authDomain: "adnan-tatli-taseron.firebaseapp.com",
-      projectId: "adnan-tatli-taseron",
-      storageBucket: "adnan-tatli-taseron.firebasestorage.app",
-      messagingSenderId: "903935160604",
-      appId: "1:903935160604:web:611bd1753d023b7f4f0ad9",
-      measurementId: "G-EVD1H8DKPV"
-    };
-  </script>
+  <!-- PWA için (istersen kullanırsın) -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+  <meta name="theme-color" content="#1f6feb" />
 
   <style>
     :root {
@@ -55,16 +45,24 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 12px 16px;
-      margin-bottom: 12px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       color: #fff;
-      border-radius: 18px;
+      border-radius: 22px;
       box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
     }
 
-    .app-title { font-size: 1.1rem; font-weight: 700; line-height: 1.3; }
-    .app-subtitle { font-size: 0.78rem; opacity: 0.9; }
+    .app-title {
+      font-size: 1.25rem;
+      font-weight: 750;
+      line-height: 1.3;
+    }
+
+    .app-subtitle {
+      font-size: 0.78rem;
+      opacity: 0.9;
+    }
 
     .badge {
       padding: 4px 10px;
@@ -76,9 +74,58 @@
       white-space: nowrap;
     }
 
-    nav {
+    .btn {
+      border-radius: 999px;
+      border: none;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(31, 111, 235, 0.45);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: #ecf2ff;
+      color: var(--primary-dark);
+    }
+
+    .btn-outline:hover {
+      background: #dde7ff;
+    }
+
+    .btn-danger {
+      background: rgba(224, 36, 36, 0.08);
+      color: var(--danger);
+    }
+
+    .btn-danger:hover {
+      background: rgba(224, 36, 36, 0.16);
+    }
+
+    .btn-sm {
+      padding: 4px 9px;
+      font-size: 0.75rem;
+    }
+
+    /* NAV (sadece yönetici modunda görünecek) */
+    nav#main-nav {
       margin: 10px 0 16px;
-      display: flex;
+      display: none; /* Yönetici girince JS ile flex yapılacak */
       gap: 8px;
       overflow-x: auto;
       padding-bottom: 4px;
@@ -103,6 +150,7 @@
     }
 
     .nav-btn span.icon { font-size: 1rem; }
+
     .nav-btn.active {
       background: var(--primary);
       color: #fff;
@@ -129,15 +177,29 @@
       gap: 8px;
     }
 
-    .card-title { font-weight: 650; font-size: 0.98rem; }
-    .card-subtitle { font-size: 0.78rem; color: var(--text-sub); }
+    .card-title {
+      font-weight: 650;
+      font-size: 0.98rem;
+    }
+
+    .card-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-sub);
+    }
 
     .section { display: none; }
     .section.active { display: block; }
 
-    .form-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
     @media (min-width: 640px) {
-      .form-grid.two-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .form-grid.two-cols {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
 
     label {
@@ -160,7 +222,8 @@
       appearance: none;
     }
 
-    input:focus, select:focus {
+    input:focus,
+    select:focus {
       border-color: var(--primary);
       box-shadow: 0 0 0 1px rgba(31, 111, 235, 0.25);
       background: #ffffff;
@@ -169,46 +232,12 @@
     input[type="number"] {
       -moz-appearance: textfield;
     }
+
     input[type="number"]::-webkit-outer-spin-button,
     input[type="number"]::-webkit-inner-spin-button {
       -webkit-appearance: none;
       margin: 0;
     }
-
-    .btn {
-      border-radius: 999px;
-      border: none;
-      padding: 8px 16px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: background 0.2s, transform 0.1s, box-shadow 0.15s;
-    }
-
-    .btn-primary {
-      background: var(--primary);
-      color: #fff;
-      box-shadow: 0 8px 18px rgba(31, 111, 235, 0.45);
-    }
-    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
-
-    .btn-outline {
-      background: #ecf2ff;
-      color: var(--primary-dark);
-    }
-    .btn-outline:hover { background: #dde7ff; }
-
-    .btn-danger {
-      background: rgba(224, 36, 36, 0.08);
-      color: var(--danger);
-    }
-    .btn-danger:hover { background: rgba(224, 36, 36, 0.16); }
-
-    .btn-sm { padding: 4px 9px; font-size: 0.75rem; }
 
     .pill {
       border-radius: 999px;
@@ -226,6 +255,16 @@
       color: var(--text-sub);
     }
 
+    .pill-amount {
+      background: rgba(5, 150, 105, 0.1);
+      color: var(--success);
+    }
+
+    .pill-negative {
+      background: rgba(224, 36, 36, 0.08);
+      color: var(--danger);
+    }
+
     .helper-text {
       font-size: 0.72rem;
       color: var(--text-sub);
@@ -239,7 +278,9 @@
       margin-top: 6px;
     }
 
-    thead { background: #eff3ff; }
+    thead {
+      background: #eff3ff;
+    }
 
     th, td {
       padding: 6px 6px;
@@ -248,16 +289,36 @@
       white-space: nowrap;
     }
 
-    th { font-weight: 600; font-size: 0.76rem; color: var(--text-sub); }
-    tbody tr:nth-child(even) { background: #f9fafb; }
+    th {
+      font-weight: 600;
+      font-size: 0.76rem;
+      color: var(--text-sub);
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f9fafb;
+    }
 
     .text-right { text-align: right; }
     .text-center { text-align: center; }
+
     .mt-4 { margin-top: 4px; }
     .mt-8 { margin-top: 8px; }
+    .mt-12 { margin-top: 12px; }
+
     .flex { display: flex; align-items: center; }
+    .flex-wrap { flex-wrap: wrap; }
     .justify-between { justify-content: space-between; }
+    .gap-6 { gap: 6px; }
     .gap-8 { gap: 8px; }
+
+    .status-msg {
+      font-size: 0.75rem;
+      margin-top: 6px;
+    }
+
+    .status-ok { color: var(--success); }
+    .status-error { color: var(--danger); }
 
     .summary-grid {
       display: grid;
@@ -265,8 +326,11 @@
       gap: 8px;
       margin-top: 6px;
     }
+
     @media (min-width: 640px) {
-      .summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .summary-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
     }
 
     .summary-card {
@@ -279,8 +343,16 @@
       gap: 2px;
     }
 
-    .summary-label { font-size: 0.72rem; color: var(--text-sub); }
-    .summary-value { font-size: 0.88rem; font-weight: 650; }
+    .summary-label {
+      font-size: 0.72rem;
+      color: var(--text-sub);
+    }
+
+    .summary-value {
+      font-size: 0.88rem;
+      font-weight: 650;
+    }
+
     .summary-value.negative { color: var(--danger); }
     .summary-value.positive { color: var(--success); }
 
@@ -309,52 +381,1109 @@
       color: var(--text-sub);
     }
 
-    .status-msg { font-size: 0.75rem; margin-top: 6px; }
-    .status-ok { color: var(--success); }
-    .status-error { color: var(--danger); }
+    .home-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    @media (min-width: 640px) {
+      .home-actions {
+        flex-direction: row;
+      }
+    }
 
     @media print {
+      body { background: #ffffff; }
       header, nav, .no-print { display: none !important; }
       .app-shell { max-width: 100%; padding: 0; }
-      body { background: #ffffff; }
       .card { box-shadow: none; border-radius: 0; border: none; padding: 8px 0; }
+      table { font-size: 0.72rem; }
     }
   </style>
 </head>
 <body>
   <div class="app-shell">
-    <header>
+    <header class="no-print">
       <div>
         <div class="app-title">Adnan Tatlı Taşeron</div>
         <div class="app-subtitle">Günlük işçi çalışma ve maaş takip uygulaması</div>
       </div>
-      <div class="flex" style="gap:8px;">
-        <button id="btn-admin-login" type="button" class="btn btn-outline btn-sm">
-          🔐 Yönetici Girişi
-        </button>
-        <div class="badge" id="badge-role">
-          Personel Görünümü
-        </div>
+      <div class="badge">
+        Yönetici &amp; Personel Giriş
       </div>
     </header>
 
-    <nav id="main-nav">
-      <button type="button" class="nav-btn" id="nav-daily" style="display:none;">
+    <!-- Yönetici nav bar (şifre doğruysa açılacak) -->
+    <nav id="main-nav" class="no-print">
+      <button class="nav-btn" id="nav-daily">
         <span class="icon">🕒</span><span>Günlük Kayıt</span>
       </button>
-      <button type="button" class="nav-btn" id="nav-workers" style="display:none;">
+      <button class="nav-btn" id="nav-workers">
         <span class="icon">👷</span><span>İşçi Ayarları</span>
       </button>
-      <button type="button" class="nav-btn" id="nav-deductions" style="display:none%;">
+      <button class="nav-btn" id="nav-deductions">
         <span class="icon">📉</span><span>Kesinti / Ödül</span>
       </button>
-      <button type="button" class="nav-btn active" id="nav-employee">
+      <button class="nav-btn" id="nav-employee">
         <span class="icon">📊</span><span>Personel Görünümü</span>
       </button>
     </nav>
 
-    <!-- Buradan sonrası: aynen önceki tam kodun devamı -->
-    <!-- Kısaltmak için burada kesiyorum; asıl dosyada tüm bölümler + script var. -->
+    <!-- ANA MENÜ (sadece 2 seçenek) -->
+    <section id="section-auth" class="section active">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Giriş Seçimi</div>
+            <div class="card-subtitle">
+              Yönetici olarak maaşları düzenleyin veya personel olarak bordronuzu görüntüleyin.
+            </div>
+          </div>
+        </div>
+        <div class="home-actions">
+          <button id="btn-enter-admin" class="btn btn-primary" type="button">
+            🔐 Yönetici Girişi
+          </button>
+          <button id="btn-enter-employee" class="btn btn-outline" type="button">
+            👷 Personel Görünümü
+          </button>
+        </div>
+        <div class="helper-text mt-8">
+          Yönetici şifresi sadece sende olacak. Personeller sadece kendi bordrosunu görüntüler, düzenleme yapamaz.
+        </div>
+      </div>
+    </section>
+
+    <!-- GÜNLÜK KAYIT (YÖNETİCİ) -->
+    <section id="section-daily" class="section">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Günlük Çalışma Kaydı</div>
+            <div class="card-subtitle">Bugün kimin kaç saat çalıştığını girin.</div>
+          </div>
+          <div class="pill">
+            Yönetici Paneli
+          </div>
+        </div>
+
+        <div class="form-grid two-cols">
+          <div>
+            <label for="daily-date">Tarih</label>
+            <input id="daily-date" type="date" />
+          </div>
+          <div>
+            <label for="daily-worker">İşçi Seç</label>
+            <select id="daily-worker"></select>
+          </div>
+          <div>
+            <label for="daily-hours">Çalışılan Saat (saat)</label>
+            <input id="daily-hours" type="number" min="0" step="0.25" placeholder="Örn: 8 veya 9" />
+            <div class="helper-text">
+              8 saatin üzeri, saatlik ücrete göre otomatik hesaplanır.
+            </div>
+          </div>
+          <div>
+            <label>8 Saatlik Günlük Ücret (TL)</label>
+            <div id="daily-8wage" class="pill-muted pill" style="width:100%;justify-content:space-between;">
+              <span>Seçili işçi için 8 saatlik ücret</span>
+              <strong id="daily-8wage-value">0,00 TL</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8">
+          <div class="pill" style="width:100%; justify-content:space-between;">
+            <span>Hesaplanan Günlük Ücret</span>
+            <strong id="daily-calculated-wage">0,00 TL</strong>
+          </div>
+        </div>
+
+        <div class="mt-8 flex gap-8 justify-between">
+          <button id="btn-save-daily" class="btn btn-primary">
+            💾 Kaydı Kaydet
+          </button>
+          <div id="daily-status" class="status-msg"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Son Kayıtlar</div>
+            <div class="card-subtitle">Son girilen çalışma kayıtlarının özeti.</div>
+          </div>
+        </div>
+        <div class="helper-text">
+          Aynı tarih ve işçi için yeniden kayıt girerseniz eski kayıt güncellenir.
+        </div>
+        <div class="mt-4" style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Tarih</th>
+                <th>İşçi</th>
+                <th class="text-center">Saat</th>
+                <th class="text-right">Günlük Ücret (TL)</th>
+              </tr>
+            </thead>
+            <tbody id="daily-logs-table">
+              <tr><td colspan="4" class="text-center">Henüz kayıt yok.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- İŞÇİ AYARLARI (YÖNETİCİ) -->
+    <section id="section-workers" class="section">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">İşçi Listesi & 8 Saatlik Ücretler</div>
+            <div class="card-subtitle">
+              Her işçi için günlük 8 saatlik ücret girin. Saatlik ücret otomatik hesaplanır.
+            </div>
+          </div>
+          <button id="btn-add-worker" class="btn btn-outline btn-sm no-print">
+            ➕ Yeni İşçi
+          </button>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>İşçi Adı</th>
+                <th>8 Saatlik Ücret (TL)</th>
+                <th class="text-center no-print">İşlem</th>
+              </tr>
+            </thead>
+            <tbody id="workers-table"></tbody>
+          </table>
+        </div>
+        <div class="mt-8 flex justify-between gap-8">
+          <button id="btn-save-workers" class="btn btn-primary no-print">
+            💾 İşçi Ayarlarını Kaydet
+          </button>
+          <div id="workers-status" class="status-msg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KESİNTİ / ÖDÜL (YÖNETİCİ) -->
+    <section id="section-deductions" class="section">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Kesinti & Ödül Ayarları</div>
+            <div class="card-subtitle">
+              Her işçi için aylık yüzdelik / sabit kesinti ve ödülleri tanımlayın.
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <label for="ded-worker">İşçi Seç</label>
+            <select id="ded-worker"></select>
+          </div>
+        </div>
+
+        <div class="mt-8">
+          <div class="card-subtitle" style="margin-bottom:4px;">Yüzdelik Kesintiler (%)</div>
+          <div class="form-grid two-cols">
+            <div>
+              <label for="ded-percent-name">Ad / Açıklama</label>
+              <input id="ded-percent-name" type="text" placeholder="Örn: Avans, Yemek, Ceza" />
+            </div>
+            <div>
+              <label for="ded-percent-value">Yüzde (%)</label>
+              <input id="ded-percent-value" type="number" step="0.1" min="0" placeholder="Örn: 10" />
+            </div>
+          </div>
+          <div class="mt-4 flex gap-8 justify-between">
+            <button id="btn-add-percent" class="btn btn-outline btn-sm no-print" type="button">
+              ➕ Yüzdelik Kesinti Ekle
+            </button>
+          </div>
+          <div id="percent-list" class="chip-row mt-4"></div>
+        </div>
+
+        <div class="mt-8">
+          <div class="card-subtitle" style="margin-bottom:4px;">Sabit Kesintiler (TL)</div>
+          <div class="form-grid two-cols">
+            <div>
+              <label for="ded-fixed-name">Ad / Açıklama</label>
+              <input id="ded-fixed-name" type="text" placeholder="Örn: Borç, Hasar" />
+            </div>
+            <div>
+              <label for="ded-fixed-value">Tutar (TL)</label>
+              <input id="ded-fixed-value" type="number" step="0.01" min="0" placeholder="Örn: 500" />
+            </div>
+          </div>
+          <div class="mt-4 flex gap-8 justify-between">
+            <button id="btn-add-fixed" class="btn btn-outline btn-sm no-print" type="button">
+              ➕ Sabit Kesinti Ekle
+            </button>
+          </div>
+          <div id="fixed-list" class="chip-row mt-4"></div>
+        </div>
+
+        <div class="mt-8">
+          <div class="card-subtitle" style="margin-bottom:4px;">Ödüller / Primler (TL)</div>
+          <div class="form-grid two-cols">
+            <div>
+              <label for="bonus-name">Ad / Açıklama</label>
+              <input id="bonus-name" type="text" placeholder="Örn: Performans Primi" />
+            </div>
+            <div>
+              <label for="bonus-value">Tutar (TL)</label>
+              <input id="bonus-value" type="number" step="0.01" min="0" placeholder="Örn: 750" />
+            </div>
+          </div>
+          <div class="mt-4 flex gap-8 justify-between">
+            <button id="btn-add-bonus" class="btn btn-outline btn-sm no-print" type="button">
+              ➕ Ödül / Prim Ekle
+            </button>
+          </div>
+          <div id="bonus-list" class="chip-row mt-4"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PERSONEL GÖRÜNÜMÜ (YÖNETİCİ + PERSONEL) -->
+    <section id="section-employee" class="section">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Personel Maaş Bordrosu</div>
+            <div class="card-subtitle">
+              İşçi, adını ve ayı seçerek kendi 1 aylık raporunu görebilir.
+            </div>
+          </div>
+          <button id="btn-back-home" class="btn btn-outline btn-sm no-print" type="button">
+            ⏪ Ana Menü
+          </button>
+        </div>
+
+        <div class="form-grid two-cols">
+          <div>
+            <label for="emp-worker">İşçi Adı</label>
+            <select id="emp-worker"></select>
+          </div>
+          <div>
+            <label for="emp-month">Ay Seçin</label>
+            <input id="emp-month" type="month" />
+          </div>
+        </div>
+
+        <div class="mt-8 flex gap-8 justify-between no-print">
+          <button id="btn-show-report" class="btn btn-primary" type="button">
+            📊 Raporu Göster
+          </button>
+          <button id="btn-print" class="btn btn-outline" type="button">
+            🧾 PDF / Yazdır
+          </button>
+        </div>
+
+        <div id="emp-summary" class="mt-8">
+          <div class="summary-grid">
+            <div class="summary-card">
+              <div class="summary-label">Toplam Brüt</div>
+              <div id="sum-gross" class="summary-value">0,00 TL</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Yüzdelik Kesintiler</div>
+              <div id="sum-percent" class="summary-value negative">0,00 TL</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Sabit Kesintiler</div>
+              <div id="sum-fixed" class="summary-value negative">0,00 TL</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Ödüller / Prim</div>
+              <div id="sum-bonus" class="summary-value positive">0,00 TL</div>
+            </div>
+          </div>
+          <div class="mt-8 summary-grid">
+            <div class="summary-card" style="grid-column: span 2;">
+              <div class="summary-label">Net Maaş</div>
+              <div id="sum-net" class="summary-value positive" style="font-size:1rem;">0,00 TL</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Toplam Çalışma Saati</div>
+              <div id="sum-hours" class="summary-value">0,00 saat</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Çalışılan Gün Sayısı</div>
+              <div id="sum-days" class="summary-value">0 gün</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8">
+          <div class="card-subtitle">Günlük Çalışma ve Ücretler</div>
+          <div class="mt-4" style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th class="text-center">Saat</th>
+                  <th class="text-right">Günlük Ücret (TL)</th>
+                </tr>
+              </thead>
+              <tbody id="emp-table-body">
+                <tr><td colspan="3" class="text-center">Seçilen ay için kayıt yok.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="helper-text mt-4">
+            PDF almak için “PDF / Yazdır” butonuna basıp tarayıcıdan <strong>PDF olarak kaydet</strong> seçeneğini kullanabilirsiniz.
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
+
+  <script>
+    const STORAGE_KEY = "adnanTatliTaseronData_v1";
+
+    const defaultData = {
+      workers: [
+        { id: "w1",  name: "İşçi 1",  daily8: 1000, deductions: { percent: [], fixed: [], bonus: [] } },
+        { id: "w2",  name: "İşçi 2",  daily8: 1000, deductions: { percent: [], fixed: [], bonus: [] } },
+        { id: "w3",  name: "İşçi 3",  daily8: 1000, deductions: { percent: [], fixed: [], bonus: [] } },
+        { id: "w4",  name: "İşçi 4",  daily8: 1000, deductions: { percent: [], fixed: [], bonus: [] } },
+        { id: "w5",  name: "İşçi 5",  daily8: 1000, deductions: { percent: [], fixed: [], bonus: [] } },
+        { id: "w6",  name: "İşçi 6",  daily8: 1000, deductions: { percent: [], fixed: [], bonus: [] } },
+        { id: "w7",  name: "İşçi 7",  daily8: 1000, deductions: { percent: [], fixed: [], bonus: [] } },
+        { id: "w8",  name: "İşçi 8",  daily8: 1000, deductions: { percent: [], fixed: [], bonus: [] } },
+        { id: "w9",  name: "İşçi 9",  daily8: 1000, deductions: { percent: [], fixed: [], bonus: [] } },
+        { id: "w10", name: "İşçi 10", daily8: 1000, deductions: { percent: [], fixed: [], bonus: [] } }
+      ],
+      logs: [] // {id, workerId, date, hours}
+    };
+
+    let appData = null;
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          appData = JSON.parse(JSON.stringify(defaultData));
+          saveData();
+        } else {
+          appData = JSON.parse(raw);
+        }
+      } catch (e) {
+        console.error("Veri okunamadı, varsayılan ayarlar yükleniyor.", e);
+        appData = JSON.parse(JSON.stringify(defaultData));
+        saveData();
+      }
+
+      appData.workers.forEach(w => {
+        if (!w.deductions) {
+          w.deductions = { percent: [], fixed: [], bonus: [] };
+        } else {
+          w.deductions.percent = w.deductions.percent || [];
+          w.deductions.fixed = w.deductions.fixed || [];
+          w.deductions.bonus = w.deductions.bonus || [];
+        }
+      });
+      if (!Array.isArray(appData.logs)) appData.logs = [];
+    }
+
+    function saveData() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+      } catch (e) {
+        console.error("Veri kaydedilemedi:", e);
+      }
+    }
+
+    function formatTL(value) {
+      const num = isNaN(value) ? 0 : Number(value);
+      return num.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+    }
+
+    function formatNumber(value, digits = 2) {
+      const num = isNaN(value) ? 0 : Number(value);
+      return num.toLocaleString("tr-TR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return "";
+      const [y, m, d] = dateStr.split("-");
+      return `${d}.${m}.${y}`;
+    }
+
+    /* ---------- RENDER HELPERS ---------- */
+    function renderWorkerSelects() {
+      const selects = [
+        document.getElementById("daily-worker"),
+        document.getElementById("ded-worker"),
+        document.getElementById("emp-worker")
+      ];
+
+      selects.forEach(sel => {
+        if (!sel) return;
+        sel.innerHTML = "";
+        appData.workers.forEach(w => {
+          const opt = document.createElement("option");
+          opt.value = w.id;
+          opt.textContent = w.name;
+          sel.appendChild(opt);
+        });
+      });
+
+      updateDaily8WageDisplay();
+      renderDeductionsUI();
+    }
+
+    function renderWorkersTable() {
+      const tbody = document.getElementById("workers-table");
+      tbody.innerHTML = "";
+
+      if (appData.workers.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 3;
+        td.textContent = "Henüz işçi yok.";
+        td.className = "text-center";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      appData.workers.forEach(w => {
+        const tr = document.createElement("tr");
+
+        const tdName = document.createElement("td");
+        const inputName = document.createElement("input");
+        inputName.type = "text";
+        inputName.value = w.name;
+        inputName.dataset.workerId = w.id;
+        inputName.className = "worker-name-input";
+        tdName.appendChild(inputName);
+
+        const tdWage = document.createElement("td");
+        const inputWage = document.createElement("input");
+        inputWage.type = "number";
+        inputWage.step = "0.01";
+        inputWage.min = "0";
+        inputWage.value = w.daily8 || 0;
+        inputWage.dataset.workerId = w.id;
+        inputWage.className = "worker-wage-input";
+        tdWage.appendChild(inputWage);
+
+        const tdAction = document.createElement("td");
+        tdAction.className = "text-center no-print";
+        const btnDel = document.createElement("button");
+        btnDel.className = "btn btn-danger btn-sm";
+        btnDel.textContent = "Sil";
+        btnDel.onclick = () => deleteWorker(w.id);
+        tdAction.appendChild(btnDel);
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdWage);
+        tr.appendChild(tdAction);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function deleteWorker(workerId) {
+      if (!confirm("Bu işçiyi ve ona ait tüm kayıtları silmek istediğinize emin misiniz?")) return;
+      appData.workers = appData.workers.filter(w => w.id !== workerId);
+      appData.logs = appData.logs.filter(l => l.workerId !== workerId);
+      saveData();
+      renderWorkerSelects();
+      renderWorkersTable();
+      renderDailyLogsTable();
+      renderEmployeeReport();
+    }
+
+    function updateDaily8WageDisplay() {
+      const sel = document.getElementById("daily-worker");
+      const span = document.getElementById("daily-8wage-value");
+      if (!sel || !span) return;
+      const worker = appData.workers.find(w => w.id === sel.value);
+      const value = worker ? worker.daily8 : 0;
+      span.textContent = formatNumber(value) + " TL";
+      updateDailyCalculatedWage();
+    }
+
+    function updateDailyCalculatedWage() {
+      const sel = document.getElementById("daily-worker");
+      const hoursInput = document.getElementById("daily-hours");
+      const out = document.getElementById("daily-calculated-wage");
+      if (!sel || !hoursInput || !out) return;
+
+      const worker = appData.workers.find(w => w.id === sel.value);
+      const daily8 = worker ? Number(worker.daily8) : 0;
+      const hours = parseFloat(hoursInput.value);
+      if (!worker || isNaN(hours)) {
+        out.textContent = "0,00 TL";
+        return;
+      }
+      const hourly = daily8 / 8;
+      const wage = hourly * hours;
+      out.textContent = formatTL(wage);
+    }
+
+    function renderDailyLogsTable() {
+      const tbody = document.getElementById("daily-logs-table");
+      tbody.innerHTML = "";
+
+      if (appData.logs.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 4;
+        td.textContent = "Henüz kayıt yok.";
+        td.className = "text-center";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      const sorted = [...appData.logs]
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 50);
+
+      sorted.forEach(log => {
+        const worker = appData.workers.find(w => w.id === log.workerId);
+        const daily8 = worker ? Number(worker.daily8) : 0;
+        const hourly = daily8 / 8;
+        const wage = hourly * (log.hours || 0);
+
+        const tr = document.createElement("tr");
+
+        const tdDate = document.createElement("td");
+        tdDate.textContent = formatDate(log.date);
+
+        const tdWorker = document.createElement("td");
+        tdWorker.textContent = worker ? worker.name : "-";
+
+        const tdHours = document.createElement("td");
+        tdHours.className = "text-center";
+        tdHours.textContent = formatNumber(log.hours || 0, 2);
+
+        const tdWage = document.createElement("td");
+        tdWage.className = "text-right";
+        tdWage.textContent = formatNumber(wage) + " TL";
+
+        tr.appendChild(tdDate);
+        tr.appendChild(tdWorker);
+        tr.appendChild(tdHours);
+        tr.appendChild(tdWage);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderDeductionsUI() {
+      const sel = document.getElementById("ded-worker");
+      if (!sel) return;
+      const worker = appData.workers.find(w => w.id === sel.value);
+      const percentDiv = document.getElementById("percent-list");
+      const fixedDiv = document.getElementById("fixed-list");
+      const bonusDiv = document.getElementById("bonus-list");
+
+      percentDiv.innerHTML = "";
+      fixedDiv.innerHTML = "";
+      bonusDiv.innerHTML = "";
+
+      if (!worker) return;
+
+      worker.deductions.percent.forEach((item, idx) => {
+        const chip = document.createElement("div");
+        chip.className = "chip";
+        chip.innerHTML = `<strong>${item.name || "Kesinti"}</strong> • %${formatNumber(item.value, 1)} `;
+        const btn = document.createElement("button");
+        btn.textContent = "×";
+        btn.title = "Sil";
+        btn.onclick = () => {
+          worker.deductions.percent.splice(idx, 1);
+          saveData();
+          renderDeductionsUI();
+          renderEmployeeReport();
+        };
+        chip.appendChild(btn);
+        percentDiv.appendChild(chip);
+      });
+
+      worker.deductions.fixed.forEach((item, idx) => {
+        const chip = document.createElement("div");
+        chip.className = "chip";
+        chip.innerHTML = `<strong>${item.name || "Kesinti"}</strong> • ${formatTL(item.value)} `;
+        const btn = document.createElement("button");
+        btn.textContent = "×";
+        btn.title = "Sil";
+        btn.onclick = () => {
+          worker.deductions.fixed.splice(idx, 1);
+          saveData();
+          renderDeductionsUI();
+          renderEmployeeReport();
+        };
+        chip.appendChild(btn);
+        fixedDiv.appendChild(chip);
+      });
+
+      worker.deductions.bonus.forEach((item, idx) => {
+        const chip = document.createElement("div");
+        chip.className = "chip";
+        chip.innerHTML = `<strong>${item.name || "Ödül"}</strong> • ${formatTL(item.value)} `;
+        const btn = document.createElement("button");
+        btn.textContent = "×";
+        btn.title = "Sil";
+        btn.onclick = () => {
+          worker.deductions.bonus.splice(idx, 1);
+          saveData();
+          renderDeductionsUI();
+          renderEmployeeReport();
+        };
+        chip.appendChild(btn);
+        bonusDiv.appendChild(chip);
+      });
+    }
+
+    function renderEmployeeReport() {
+      const selWorker = document.getElementById("emp-worker");
+      const inputMonth = document.getElementById("emp-month");
+      const tbody = document.getElementById("emp-table-body");
+
+      if (!selWorker || !inputMonth || !tbody) return;
+
+      const worker = appData.workers.find(w => w.id === selWorker.value);
+      const monthVal = inputMonth.value; // YYYY-MM
+      tbody.innerHTML = "";
+
+      if (!worker || !monthVal) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 3;
+        td.className = "text-center";
+        td.textContent = "Lütfen işçi ve ay seçin.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        updateEmployeeSummary(0, 0, 0, 0, 0, 0, 0);
+        return;
+      }
+
+      const logs = appData.logs.filter(
+        l => l.workerId === worker.id && l.date && l.date.startsWith(monthVal)
+      );
+
+      if (logs.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 3;
+        td.className = "text-center";
+        td.textContent = "Seçilen ay için kayıt yok.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        updateEmployeeSummary(0, 0, 0, 0, 0, 0, 0);
+        return;
+      }
+
+      logs.sort((a, b) => a.date.localeCompare(b.date));
+
+      let totalGross = 0;
+      let totalHours = 0;
+
+      logs.forEach(log => {
+        const daily8 = Number(worker.daily8) || 0;
+        const hourly = daily8 / 8;
+        const hours = log.hours || 0;
+        const wage = hourly * hours;
+
+        totalGross += wage;
+        totalHours += hours;
+
+        const tr = document.createElement("tr");
+
+        const tdDate = document.createElement("td");
+        tdDate.textContent = formatDate(log.date);
+
+        const tdHours = document.createElement("td");
+        tdHours.className = "text-center";
+        tdHours.textContent = formatNumber(hours, 2);
+
+        const tdWage = document.createElement("td");
+        tdWage.className = "text-right";
+        tdWage.textContent = formatNumber(wage) + " TL";
+
+        tr.appendChild(tdDate);
+        tr.appendChild(tdHours);
+        tr.appendChild(tdWage);
+        tbody.appendChild(tr);
+      });
+
+      const d = worker.deductions;
+      const totalPercent = (d.percent || []).reduce(
+        (sum, item) => sum + (Number(item.value) || 0),
+        0
+      );
+      const fixedTotal = (d.fixed || []).reduce(
+        (sum, item) => sum + (Number(item.value) || 0),
+        0
+      );
+      const bonusTotal = (d.bonus || []).reduce(
+        (sum, item) => sum + (Number(item.value) || 0),
+        0
+      );
+
+      const percentAmount = totalGross * (totalPercent / 100);
+      const net = totalGross - percentAmount - fixedTotal + bonusTotal;
+      const dayCount = logs.length;
+
+      updateEmployeeSummary(
+        totalGross,
+        percentAmount,
+        fixedTotal,
+        bonusTotal,
+        net,
+        totalHours,
+        dayCount
+      );
+    }
+
+    function updateEmployeeSummary(
+      gross,
+      percent,
+      fixed,
+      bonus,
+      net,
+      hours,
+      days
+    ) {
+      document.getElementById("sum-gross").textContent = formatTL(gross || 0);
+      document.getElementById("sum-percent").textContent =
+        "-" + formatTL(percent || 0);
+      document.getElementById("sum-fixed").textContent =
+        "-" + formatTL(fixed || 0);
+      document.getElementById("sum-bonus").textContent =
+        "+" + formatTL(bonus || 0);
+      document.getElementById("sum-net").textContent = formatTL(net || 0);
+      document.getElementById("sum-hours").textContent =
+        formatNumber(hours || 0, 2) + " saat";
+      document.getElementById("sum-days").textContent = (days || 0) + " gün";
+    }
+
+    /* ---------- NAV & AUTH ---------- */
+    function goHome() {
+      const authSection = document.getElementById("section-auth");
+      const nav = document.getElementById("main-nav");
+      document
+        .querySelectorAll(".section")
+        .forEach(s => s.classList.remove("active"));
+      if (authSection) {
+        authSection.style.display = "block";
+        authSection.classList.add("active");
+      }
+      if (nav) nav.style.display = "none";
+    }
+
+    function setupAuth() {
+      const btnAdmin = document.getElementById("btn-enter-admin");
+      const btnEmployee = document.getElementById("btn-enter-employee");
+      const authSection = document.getElementById("section-auth");
+      const nav = document.getElementById("main-nav");
+
+      if (btnAdmin) {
+        btnAdmin.addEventListener("click", () => {
+          let pwd = prompt("Yönetici şifresini girin:");
+          if (pwd === null) return;
+          pwd = pwd.trim();
+          if (pwd === "844830") {
+            if (authSection) authSection.style.display = "none";
+            if (nav) nav.style.display = "flex";
+            document
+              .querySelectorAll(".section")
+              .forEach(s => s.classList.remove("active"));
+            document.getElementById("section-daily").classList.add("active");
+            document
+              .querySelectorAll(".nav-btn")
+              .forEach(b => b.classList.remove("active"));
+            document.getElementById("nav-daily").classList.add("active");
+          } else {
+            alert("Hatalı şifre");
+          }
+        });
+      }
+
+      if (btnEmployee) {
+        btnEmployee.addEventListener("click", () => {
+          if (authSection) authSection.style.display = "none";
+          if (nav) nav.style.display = "none";
+          document
+            .querySelectorAll(".section")
+            .forEach(s => s.classList.remove("active"));
+          document.getElementById("section-employee").classList.add("active");
+        });
+      }
+    }
+
+    function setupNav() {
+      const sections = {
+        "nav-daily": "section-daily",
+        "nav-workers": "section-workers",
+        "nav-deductions": "section-deductions",
+        "nav-employee": "section-employee"
+      };
+
+      Object.keys(sections).forEach(navId => {
+        const btn = document.getElementById(navId);
+        const secId = sections[navId];
+        if (!btn) return;
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".nav-btn")
+            .forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          document
+            .querySelectorAll(".section")
+            .forEach(s => s.classList.remove("active"));
+          document.getElementById(secId).classList.add("active");
+        });
+      });
+    }
+
+    /* ---------- EVENTS ---------- */
+    function setupDailyEvents() {
+      const selWorker = document.getElementById("daily-worker");
+      const hoursInput = document.getElementById("daily-hours");
+      const dateInput = document.getElementById("daily-date");
+      const btnSave = document.getElementById("btn-save-daily");
+      const status = document.getElementById("daily-status");
+
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      if (dateInput) dateInput.value = `${yyyy}-${mm}-${dd}`;
+
+      if (selWorker) {
+        selWorker.addEventListener("change", updateDaily8WageDisplay);
+      }
+      if (hoursInput) {
+        hoursInput.addEventListener("input", updateDailyCalculatedWage);
+      }
+
+      if (btnSave) {
+        btnSave.addEventListener("click", () => {
+          const workerId = selWorker.value;
+          const date = dateInput.value;
+          const hours = parseFloat(hoursInput.value);
+
+          if (!workerId || !date || isNaN(hours)) {
+            status.textContent =
+              "Lütfen tarih, işçi ve saat bilgisini doldurun.";
+            status.className = "status-msg status-error";
+            return;
+          }
+
+          let existing = appData.logs.find(
+            l => l.workerId === workerId && l.date === date
+          );
+          if (existing) {
+            existing.hours = hours;
+          } else {
+            appData.logs.push({
+              id:
+                "log_" +
+                Date.now() +
+                "_" +
+                Math.random()
+                  .toString(16)
+                  .slice(2),
+              workerId,
+              date,
+              hours
+            });
+          }
+
+          saveData();
+          renderDailyLogsTable();
+          renderEmployeeReport();
+
+          status.textContent = "Kayıt başarıyla kaydedildi.";
+          status.className = "status-msg status-ok";
+          setTimeout(() => {
+            status.textContent = "";
+          }, 2500);
+        });
+      }
+    }
+
+    function setupWorkerEvents() {
+      const btnAdd = document.getElementById("btn-add-worker");
+      const btnSave = document.getElementById("btn-save-workers");
+      const status = document.getElementById("workers-status");
+
+      if (btnAdd) {
+        btnAdd.addEventListener("click", () => {
+          const newId = "w" + Date.now();
+          appData.workers.push({
+            id: newId,
+            name: "Yeni İşçi",
+            daily8: 1000,
+            deductions: { percent: [], fixed: [], bonus: [] }
+          });
+          saveData();
+          renderWorkersTable();
+          renderWorkerSelects();
+        });
+      }
+
+      if (btnSave) {
+        btnSave.addEventListener("click", () => {
+          const nameInputs = document.querySelectorAll(".worker-name-input");
+          const wageInputs = document.querySelectorAll(".worker-wage-input");
+
+          nameInputs.forEach(inp => {
+            const id = inp.dataset.workerId;
+            const worker = appData.workers.find(w => w.id === id);
+            if (worker) {
+              worker.name = inp.value || worker.name;
+            }
+          });
+
+          wageInputs.forEach(inp => {
+            const id = inp.dataset.workerId;
+            const worker = appData.workers.find(w => w.id === id);
+            if (worker) {
+              const v = parseFloat(inp.value);
+              worker.daily8 = isNaN(v) ? 0 : v;
+            }
+          });
+
+          saveData();
+          renderWorkerSelects();
+          renderDailyLogsTable();
+          renderEmployeeReport();
+
+          status.textContent = "İşçi ayarları kaydedildi.";
+          status.className = "status-msg status-ok";
+          setTimeout(() => {
+            status.textContent = "";
+          }, 2500);
+        });
+      }
+    }
+
+    function setupDeductionEvents() {
+      const sel = document.getElementById("ded-worker");
+      const btnAddPercent = document.getElementById("btn-add-percent");
+      const btnAddFixed = document.getElementById("btn-add-fixed");
+      const btnAddBonus = document.getElementById("btn-add-bonus");
+
+      if (sel) {
+        sel.addEventListener("change", renderDeductionsUI);
+      }
+
+      if (btnAddPercent) {
+        btnAddPercent.addEventListener("click", () => {
+          const worker = appData.workers.find(w => w.id === sel.value);
+          if (!worker) return;
+          const nameInput = document.getElementById("ded-percent-name");
+          const valueInput = document.getElementById("ded-percent-value");
+          const name = nameInput.value.trim() || "Kesinti";
+          const val = parseFloat(valueInput.value);
+          if (isNaN(val)) return;
+          worker.deductions.percent.push({ name, value: val });
+          nameInput.value = "";
+          valueInput.value = "";
+          saveData();
+          renderDeductionsUI();
+          renderEmployeeReport();
+        });
+      }
+
+      if (btnAddFixed) {
+        btnAddFixed.addEventListener("click", () => {
+          const worker = appData.workers.find(w => w.id === sel.value);
+          if (!worker) return;
+          const nameInput = document.getElementById("ded-fixed-name");
+          const valueInput = document.getElementById("ded-fixed-value");
+          const name = nameInput.value.trim() || "Kesinti";
+          const val = parseFloat(valueInput.value);
+          if (isNaN(val)) return;
+          worker.deductions.fixed.push({ name, value: val });
+          nameInput.value = "";
+          valueInput.value = "";
+          saveData();
+          renderDeductionsUI();
+          renderEmployeeReport();
+        });
+      }
+
+      if (btnAddBonus) {
+        btnAddBonus.addEventListener("click", () => {
+          const worker = appData.workers.find(w => w.id === sel.value);
+          if (!worker) return;
+          const nameInput = document.getElementById("bonus-name");
+          const valueInput = document.getElementById("bonus-value");
+          const name = nameInput.value.trim() || "Ödül";
+          const val = parseFloat(valueInput.value);
+          if (isNaN(val)) return;
+          worker.deductions.bonus.push({ name, value: val });
+          nameInput.value = "";
+          valueInput.value = "";
+          saveData();
+          renderDeductionsUI();
+          renderEmployeeReport();
+        });
+      }
+    }
+
+    function setupEmployeeEvents() {
+      const btnShow = document.getElementById("btn-show-report");
+      const btnPrint = document.getElementById("btn-print");
+      const monthInput = document.getElementById("emp-month");
+      const btnBackHome = document.getElementById("btn-back-home");
+
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      if (monthInput) monthInput.value = `${yyyy}-${mm}`;
+
+      if (btnShow) {
+        btnShow.addEventListener("click", renderEmployeeReport);
+      }
+      if (btnPrint) {
+        btnPrint.addEventListener("click", () => window.print());
+      }
+
+      const empWorker = document.getElementById("emp-worker");
+      if (empWorker) empWorker.addEventListener("change", renderEmployeeReport);
+      if (monthInput) monthInput.addEventListener("change", renderEmployeeReport);
+
+      if (btnBackHome) {
+        btnBackHome.addEventListener("click", () => {
+          goHome();
+        });
+      }
+    }
+
+    function initApp() {
+      loadData();
+      setupAuth();
+      setupNav();
+      renderWorkerSelects();
+      renderWorkersTable();
+      renderDailyLogsTable();
+      renderEmployeeReport();
+      setupDailyEvents();
+      setupWorkerEvents();
+      setupDeductionEvents();
+      setupEmployeeEvents();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      initApp();
+    });
+  </script>
 </body>
 </html>
