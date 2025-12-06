@@ -1,5 +1,8 @@
 // firebase-app.js
 import { firebaseConfig } from './firebase-config.js';
+
+// **DÜZELTME: Firebase modül importları kaldırıldı ve global 'firebase' nesnesinden erişiliyor.**
+/*
 import {
   initializeApp
 } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js';
@@ -11,6 +14,15 @@ import {
   setDoc,
   onSnapshot
 } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js';
+*/
+
+// Global olarak yüklenen Firebase nesnesinden fonksiyonları alıyoruz (index.html'deki script etiketleri sayesinde)
+const initializeApp = firebase.initializeApp;
+const getFirestore = firebase.firestore.getFirestore;
+const doc = firebase.firestore.doc;
+const getDoc = firebase.firestore.getDoc;
+const setDoc = firebase.firestore.setDoc;
+const onSnapshot = firebase.firestore.onSnapshot;
 
 
 // structuredClone polyfill (Safari uyumu için)
@@ -67,6 +79,7 @@ function ensureShape(data) {
   data.workers.forEach(w => {
     if (!w.deductions) w.deductions = {};
     w.deductions.percent = Array.isArray(w.deductions.percent) ? w.deductions.percent : [];
+    w.deductions.fixed = Array.isArray(w.deductions.fixed) ? data.workers[0].deductions.fixed : [];
     w.deductions.fixed = Array.isArray(w.deductions.fixed) ? w.deductions.fixed : [];
     w.deductions.bonus = Array.isArray(w.deductions.bonus) ? w.deductions.bonus : [];
   });
@@ -280,28 +293,24 @@ function renderDailyLogsTable() {
     return;
   }
 
-  const sorted = [...appData.logs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
-  sorted.forEach(log => {
-    const worker = appData.workers.find(w => w.id === log.workerId);
-    const daily8 = worker ? Number(worker.daily8) : 0;
-    const hourly = daily8 / 8;
-    const wage = hourly * (log.hours || 0);
+  // Sadece son 3 ayı göster. Daha fazlası için Raporlama ekranı kullanılmalı.
+  const latestLogs = appData.logs.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30);
+
+  latestLogs.forEach(l => {
+    const worker = appData.workers.find(w => w.id === l.workerId);
+    if (!worker) return;
 
     const tr = document.createElement('tr');
-
     const tdDate = document.createElement('td');
-    tdDate.textContent = formatDate(log.date);
-
+    tdDate.textContent = formatDate(l.date);
     const tdWorker = document.createElement('td');
-    tdWorker.textContent = worker ? worker.name : '-';
-
+    tdWorker.textContent = worker.name;
     const tdHours = document.createElement('td');
     tdHours.className = 'text-center';
-    tdHours.textContent = formatNumber(log.hours || 0, 2);
-
+    tdHours.textContent = formatNumber(l.hours, 2);
     const tdWage = document.createElement('td');
     tdWage.className = 'text-right';
-    tdWage.textContent = formatNumber(wage) + ' TL';
+    tdWage.textContent = formatTL(l.wage);
 
     tr.appendChild(tdDate);
     tr.appendChild(tdWorker);
@@ -311,10 +320,115 @@ function renderDailyLogsTable() {
   });
 }
 
+function setupDailyEvents() {
+  const dateInput = document.getElementById('daily-date');
+  const workerSelect = document.getElementById('daily-worker');
+  const hoursInput = document.getElementById('daily-hours');
+  const btnSave = document.getElementById('btn-save-daily');
+  const status = document.getElementById('daily-status');
+
+  // Bugünün tarihini varsayılan olarak ayarla
+  dateInput.value = new Date().toISOString().slice(0, 10);
+
+  if (workerSelect) workerSelect.addEventListener('change', updateDaily8WageDisplay);
+  if (hoursInput) hoursInput.addEventListener('input', updateDailyCalculatedWage);
+
+  if (btnSave) {
+    btnSave.addEventListener('click', async () => {
+      const date = dateInput.value;
+      const workerId = workerSelect.value;
+      const hours = parseFloat(hoursInput.value);
+      const worker = appData.workers.find(w => w.id === workerId);
+
+      if (!date || !workerId || isNaN(hours) || hours <= 0) {
+        status.textContent = 'Lütfen tüm alanları doğru doldurun.';
+        status.className = 'status-msg status-error';
+        return;
+      }
+
+      const daily8 = worker ? Number(worker.daily8) : 0;
+      const hourly = daily8 / 8;
+      const wage = hourly * hours;
+
+      const newLog = {
+        date: date,
+        workerId: workerId,
+        hours: hours,
+        wage: wage
+      };
+
+      // Kaydı güncelle veya ekle
+      const existingIndex = appData.logs.findIndex(l => l.date === date && l.workerId === workerId);
+      if (existingIndex > -1) {
+        appData.logs[existingIndex] = newLog;
+      } else {
+        appData.logs.push(newLog);
+      }
+
+      // Tarihe göre sırala
+      appData.logs.sort((a, b) => a.date.localeCompare(b.date));
+
+      await saveData();
+      renderDailyLogsTable();
+      status.textContent = 'Günlük kayıt başarıyla kaydedildi.';
+      status.className = 'status-msg status-ok';
+      setTimeout(() => { status.textContent = ''; }, 2500);
+    });
+  }
+}
+
+function setupWorkerEvents() {
+  const btnAdd = document.getElementById('btn-add-worker');
+  const btnSave = document.getElementById('btn-save-workers');
+  const status = document.getElementById('workers-status');
+
+  if (btnAdd) {
+    btnAdd.addEventListener('click', async () => {
+      const newId = 'w' + Date.now();
+      appData.workers.push({
+        id: newId,
+        name: 'Yeni İşçi',
+        daily8: 1000,
+        deductions: { percent: [], fixed: [], bonus: [] }
+      });
+      await saveData();
+    });
+  }
+
+  if (btnSave) {
+    btnSave.addEventListener('click', async () => {
+      const nameInputs = document.querySelectorAll('.worker-name-input');
+      const wageInputs = document.querySelectorAll('.worker-wage-input');
+
+      nameInputs.forEach(inp => {
+        const id = inp.dataset.workerId;
+        const worker = appData.workers.find(w => w.id === id);
+        if (worker) {
+          worker.name = inp.value || worker.name;
+        }
+      });
+
+      wageInputs.forEach(inp => {
+        const id = inp.dataset.workerId;
+        const worker = appData.workers.find(w => w.id === id);
+        if (worker) {
+          const v = parseFloat(inp.value);
+          worker.daily8 = isNaN(v) ? 0 : v;
+        }
+      });
+
+      await saveData();
+      status.textContent = 'İşçi ayarları kaydedildi.';
+      status.className = 'status-msg status-ok';
+      setTimeout(() => { status.textContent = ''; }, 2500);
+    });
+  }
+}
+
 function renderDeductionsUI() {
   const sel = document.getElementById('ded-worker');
-  if (!sel) return;
   const worker = appData.workers.find(w => w.id === sel.value);
+
   const percentDiv = document.getElementById('percent-list');
   const fixedDiv = document.getElementById('fixed-list');
   const bonusDiv = document.getElementById('bonus-list');
@@ -371,86 +485,134 @@ function renderDeductionsUI() {
   });
 }
 
+function setupDeductionEvents() {
+  const sel = document.getElementById('ded-worker');
+  const btnAddPercent = document.getElementById('btn-add-percent');
+  const btnAddFixed = document.getElementById('btn-add-fixed');
+  const btnAddBonus = document.getElementById('btn-add-bonus');
+
+  if (sel) sel.addEventListener('change', renderDeductionsUI);
+
+  if (btnAddPercent) {
+    btnAddPercent.addEventListener('click', async () => {
+      const worker = appData.workers.find(w => w.id === sel.value);
+      const name = document.getElementById('ded-percent-name').value.trim();
+      const value = parseFloat(document.getElementById('ded-percent-value').value);
+
+      if (!worker || isNaN(value) || value <= 0) return;
+
+      worker.deductions.percent.push({ name: name || 'Yüzdelik Kesinti', value: value });
+      document.getElementById('ded-percent-name').value = '';
+      document.getElementById('ded-percent-value').value = '';
+      await saveData();
+    });
+  }
+
+  if (btnAddFixed) {
+    btnAddFixed.addEventListener('click', async () => {
+      const worker = appData.workers.find(w => w.id === sel.value);
+      const name = document.getElementById('ded-fixed-name').value.trim();
+      const value = parseFloat(document.getElementById('ded-fixed-value').value);
+
+      if (!worker || isNaN(value) || value <= 0) return;
+
+      worker.deductions.fixed.push({ name: name || 'Sabit Kesinti', value: value });
+      document.getElementById('ded-fixed-name').value = '';
+      document.getElementById('ded-fixed-value').value = '';
+      await saveData();
+    });
+  }
+
+  if (btnAddBonus) {
+    btnAddBonus.addEventListener('click', async () => {
+      const worker = appData.workers.find(w => w.id === sel.value);
+      const name = document.getElementById('ded-bonus-name').value.trim();
+      const value = parseFloat(document.getElementById('ded-bonus-value').value);
+
+      if (!worker || isNaN(value) || value <= 0) return;
+
+      worker.deductions.bonus.push({ name: name || 'Ek Ödül', value: value });
+      document.getElementById('ded-bonus-name').value = '';
+      document.getElementById('ded-bonus-value').value = '';
+      await saveData();
+    });
+  }
+}
+
 function renderEmployeeReport() {
-  const selWorker = document.getElementById('emp-worker');
-  const inputMonth = document.getElementById('emp-month');
-  const tbody = document.getElementById('emp-table-body');
+  const sel = document.getElementById('emp-worker');
+  const monthInput = document.getElementById('emp-month');
+  const reportDiv = document.getElementById('employee-report-content');
 
-  if (!selWorker || !inputMonth || !tbody) return;
+  const worker = appData.workers.find(w => w.id === sel.value);
+  const selectedMonth = monthInput.value; // YYYY-MM
 
-  const worker = appData.workers.find(w => w.id === selWorker.value);
-  const monthVal = inputMonth.value;
-  tbody.innerHTML = '';
-
-  if (!worker || !monthVal) {
-    const tr = document.createElement('tr');
-    const td = document.createElement('td');
-    td.colSpan = 3;
-    td.className = 'text-center';
-    td.textContent = 'Lütfen işçi ve ay seçin.';
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-    updateEmployeeSummary(0, 0, 0, 0, 0, 0, 0);
+  if (!worker || !selectedMonth) {
+    reportDiv.style.display = 'none';
     return;
   }
 
-  const logs = appData.logs.filter(l => l.workerId === worker.id && l.date && l.date.startsWith(monthVal));
+  reportDiv.style.display = 'block';
 
+  // Başlıkları güncelle
+  document.getElementById('report-title-name').textContent = worker.name;
+  const [year, month] = selectedMonth.split('-');
+  const monthName = new Date(year, month - 1, 1).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+  document.getElementById('report-title-month').textContent = `${monthName} Maaş Raporu`;
+
+  // Seçilen aya ait kayıtları filtrele
+  const logs = appData.logs.filter(l => l.workerId === worker.id && l.date.startsWith(selectedMonth));
+
+  // Hesaplamalar
+  const totalHours = logs.reduce((sum, l) => sum + (Number(l.hours) || 0), 0);
+  const totalGross = logs.reduce((sum, l) => sum + (Number(l.wage) || 0), 0);
+  const d = worker.deductions;
+
+  // Yüzdelik kesinti hesaplama
+  const totalPercent = (d.percent || []).reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+  const percentAmount = totalGross * (totalPercent / 100);
+
+  // Sabit kesinti ve ödül toplamları
+  const fixedTotal = (d.fixed || []).reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+  const bonusTotal = (d.bonus || []).reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+
+  // Net maaş hesaplama
+  const net = totalGross - percentAmount - fixedTotal + bonusTotal;
+  const dayCount = logs.length;
+
+  // Özet UI güncelleme
+  updateEmployeeSummary(totalGross, percentAmount, fixedTotal, bonusTotal, net, totalHours, dayCount);
+
+  // Detay tablosu güncelleme
+  const tbody = document.getElementById('emp-table-body');
+  tbody.innerHTML = '';
   if (logs.length === 0) {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
     td.colSpan = 3;
-    td.className = 'text-center';
     td.textContent = 'Seçilen ay için kayıt yok.';
+    td.className = 'text-center';
     tr.appendChild(td);
     tbody.appendChild(tr);
-    updateEmployeeSummary(0, 0, 0, 0, 0, 0, 0);
     return;
   }
 
-  logs.sort((a, b) => a.date.localeCompare(b.date));
-
-  let totalGross = 0;
-  let totalHours = 0;
-
-  logs.forEach(log => {
-    const daily8 = Number(worker.daily8) || 0;
-    const hourly = daily8 / 8;
-    const hours = log.hours || 0;
-    const wage = hourly * hours;
-
-    totalGross += wage;
-    totalHours += hours;
-
+  logs.sort((a, b) => a.date.localeCompare(b.date)).forEach(l => {
     const tr = document.createElement('tr');
-
     const tdDate = document.createElement('td');
-    tdDate.textContent = formatDate(log.date);
-
+    tdDate.textContent = formatDate(l.date);
     const tdHours = document.createElement('td');
     tdHours.className = 'text-center';
-    tdHours.textContent = formatNumber(hours, 2);
-
+    tdHours.textContent = formatNumber(l.hours, 2);
     const tdWage = document.createElement('td');
     tdWage.className = 'text-right';
-    tdWage.textContent = formatNumber(wage) + ' TL';
+    tdWage.textContent = formatTL(l.wage);
 
     tr.appendChild(tdDate);
     tr.appendChild(tdHours);
     tr.appendChild(tdWage);
     tbody.appendChild(tr);
   });
-
-  const d = worker.deductions;
-  const totalPercent = (d.percent || []).reduce((sum, item) => sum + (Number(item.value) || 0), 0);
-  const fixedTotal = (d.fixed || []).reduce((sum, item) => sum + (Number(item.value) || 0), 0);
-  const bonusTotal = (d.bonus || []).reduce((sum, item) => sum + (Number(item.value) || 0), 0);
-
-  const percentAmount = totalGross * (totalPercent / 100);
-  const net = totalGross - percentAmount - fixedTotal + bonusTotal;
-  const dayCount = logs.length;
-
-  updateEmployeeSummary(totalGross, percentAmount, fixedTotal, bonusTotal, net, totalHours, dayCount);
 }
 
 function updateEmployeeSummary(gross, percent, fixed, bonus, net, hours, days) {
@@ -463,11 +625,14 @@ function updateEmployeeSummary(gross, percent, fixed, bonus, net, hours, days) {
   document.getElementById('sum-days').textContent = (days || 0) + ' gün';
 }
 
+
 function renderAll() {
   renderWorkerSelects();
   renderWorkersTable();
   renderDailyLogsTable();
-  renderEmployeeReport();
+  if (currentMode === 'employee') {
+    renderEmployeeReport();
+  }
 }
 
 function setupNav() {
@@ -480,210 +645,57 @@ function setupNav() {
 
   Object.keys(sections).forEach(navId => {
     const btn = document.getElementById(navId);
-    const secId = sections[navId];
-    if (!btn) return;
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.getElementById(secId).classList.add('active');
-    });
+    if (btn) {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(sections[navId]).classList.add('active');
+        renderAll();
+      });
+    }
   });
 }
 
-function setupDailyEvents() {
-  const selWorker = document.getElementById('daily-worker');
-  const hoursInput = document.getElementById('daily-hours');
-  const dateInput = document.getElementById('daily-date');
-  const btnSave = document.getElementById('btn-save-daily');
-  const status = document.getElementById('daily-status');
-
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  if (dateInput) dateInput.value = `${yyyy}-${mm}-${dd}`;
-
-  if (selWorker) {
-    selWorker.addEventListener('change', () => {
-      updateDaily8WageDisplay();
-    });
-  }
-  if (hoursInput) {
-    hoursInput.addEventListener('input', updateDailyCalculatedWage);
-  }
-
-  if (btnSave) {
-    btnSave.addEventListener('click', async () => {
-      const workerId = selWorker.value;
-      const date = dateInput.value;
-      const hours = parseFloat(hoursInput.value);
-
-      if (!workerId || !date || isNaN(hours)) {
-        status.textContent = 'Lütfen tarih, işçi ve saat bilgisini doldurun.';
-        status.className = 'status-msg status-error';
-        return;
-      }
-
-      let existing = appData.logs.find(l => l.workerId === workerId && l.date === date);
-      if (existing) {
-        existing.hours = hours;
-      } else {
-        appData.logs.push({
-          id: 'log_' + Date.now() + '_' + Math.random().toString(16).slice(2),
-          workerId,
-          date,
-          hours
-        });
-      }
-
-      await saveData();
-
-      status.textContent = 'Kayıt başarıyla kaydedildi.';
-      status.className = 'status-msg status-ok';
-
-      setTimeout(() => {
-        status.textContent = '';
-      }, 2500);
-    });
-  }
-}
-
-function setupWorkerEvents() {
-  const btnAdd = document.getElementById('btn-add-worker');
-  const btnSave = document.getElementById('btn-save-workers');
-  const status = document.getElementById('workers-status');
-
-  if (btnAdd) {
-    btnAdd.addEventListener('click', async () => {
-      const newId = 'w' + Date.now();
-      appData.workers.push({
-        id: newId,
-        name: 'Yeni İşçi',
-        daily8: 1000,
-        deductions: { percent: [], fixed: [], bonus: [] }
-      });
-      await saveData();
-    });
-  }
-
-  if (btnSave) {
-    btnSave.addEventListener('click', async () => {
-      const nameInputs = document.querySelectorAll('.worker-name-input');
-      const wageInputs = document.querySelectorAll('.worker-wage-input');
-
-      nameInputs.forEach(inp => {
-        const id = inp.dataset.workerId;
-        const worker = appData.workers.find(w => w.id === id);
-        if (worker) {
-          worker.name = inp.value || worker.name;
-        }
-      });
-
-      wageInputs.forEach(inp => {
-        const id = inp.dataset.workerId;
-        const worker = appData.workers.find(w => w.id === id);
-        if (worker) {
-          const v = parseFloat(inp.value);
-          worker.daily8 = isNaN(v) ? 0 : v;
-        }
-      });
-
-      await saveData();
-
-      status.textContent = 'İşçi ayarları kaydedildi.';
-      status.className = 'status-msg status-ok';
-      setTimeout(() => {
-        status.textContent = '';
-      }, 2500);
-    });
-  }
-}
-
-function setupDeductionEvents() {
-  const sel = document.getElementById('ded-worker');
-  const btnAddPercent = document.getElementById('btn-add-percent');
-  const btnAddFixed = document.getElementById('btn-add-fixed');
-  const btnAddBonus = document.getElementById('btn-add-bonus');
-
-  if (sel) {
-    sel.addEventListener('change', renderDeductionsUI);
-  }
-
-  if (btnAddPercent) {
-    btnAddPercent.addEventListener('click', async () => {
-      const worker = appData.workers.find(w => w.id === sel.value);
-      if (!worker) return;
-      const nameInput = document.getElementById('ded-percent-name');
-      const valueInput = document.getElementById('ded-percent-value');
-      const name = nameInput.value.trim() || 'Kesinti';
-      const val = parseFloat(valueInput.value);
-      if (isNaN(val)) return;
-      worker.deductions.percent.push({ name, value: val });
-      nameInput.value = '';
-      valueInput.value = '';
-      await saveData();
-    });
-  }
-
-  if (btnAddFixed) {
-    btnAddFixed.addEventListener('click', async () => {
-      const worker = appData.workers.find(w => w.id === sel.value);
-      if (!worker) return;
-      const nameInput = document.getElementById('ded-fixed-name');
-      const valueInput = document.getElementById('ded-fixed-value');
-      const name = nameInput.value.trim() || 'Kesinti';
-      const val = parseFloat(valueInput.value);
-      if (isNaN(val)) return;
-      worker.deductions.fixed.push({ name, value: val });
-      nameInput.value = '';
-      valueInput.value = '';
-      await saveData();
-    });
-  }
-
-  if (btnAddBonus) {
-    btnAddBonus.addEventListener('click', async () => {
-      const worker = appData.workers.find(w => w.id === sel.value);
-      if (!worker) return;
-      const nameInput = document.getElementById('bonus-name');
-      const valueInput = document.getElementById('bonus-value');
-      const name = nameInput.value.trim() || 'Ödül';
-      const val = parseFloat(valueInput.value);
-      if (isNaN(val)) return;
-      worker.deductions.bonus.push({ name, value: val });
-      nameInput.value = '';
-      valueInput.value = '';
-      await saveData();
-    });
-  }
-}
-
-function setupEmployeeEvents() {
+function setupEmployeeReportEvents() {
   const btnShow = document.getElementById('btn-show-report');
-  const btnPrint = document.getElementById('btn-print');
+  const btnPrint = document.getElementById('btn-print-report');
   const monthInput = document.getElementById('emp-month');
   const btnBackHome = document.getElementById('btn-back-home');
+  const reportBackButton = document.getElementById('report-back-button');
 
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  // Varsayılan olarak bu ayı seç
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = (now.getMonth() + 1).padStart(2, '0');
   if (monthInput) monthInput.value = `${yyyy}-${mm}`;
 
   if (btnShow) {
     btnShow.addEventListener('click', () => {
+      document.getElementById('employee-report-content').style.display = 'block';
       renderEmployeeReport();
     });
   }
+
   if (btnPrint) {
     btnPrint.addEventListener('click', () => {
       window.print();
     });
   }
 
+  if (reportBackButton) {
+    reportBackButton.addEventListener('click', () => {
+      document.getElementById('employee-report-content').style.display = 'none';
+    });
+  }
+
   const empWorker = document.getElementById('emp-worker');
-  if (empWorker) empWorker.addEventListener('change', renderEmployeeReport);
-  if (monthInput) monthInput.addEventListener('change', renderEmployeeReport);
+  if (empWorker) empWorker.addEventListener('change', () => {
+    document.getElementById('employee-report-content').style.display = 'none';
+  });
+  if (monthInput) monthInput.addEventListener('change', () => {
+    document.getElementById('employee-report-content').style.display = 'none';
+  });
 
   if (btnBackHome) {
     btnBackHome.addEventListener('click', () => {
@@ -695,43 +707,32 @@ function setupEmployeeEvents() {
 function goHome() {
   const authSection = document.getElementById('section-auth');
   const nav = document.getElementById('main-nav');
-  if (authSection) {
-    authSection.style.display = 'block';
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    authSection.classList.add('active');
-  }
-  if (nav) nav.style.display = 'none';
-}
-
-
-function goHome() {
-  const authSection = document.getElementById('section-auth');
-  const nav = document.getElementById('main-nav');
   currentMode = 'none';
+
   document.body.classList.remove('employee-view');
-  if (nav) nav.style.display = 'none';
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  if (authSection) {
-    authSection.style.display = 'block';
-    authSection.classList.add('active');
-  }
+
+  if (authSection) authSection.classList.add('active');
+  if (nav) nav.style.display = 'none';
+  document.getElementById('admin-pass').value = '';
 }
 
 function setupAuth() {
-  const btnAdmin = document.getElementById('btn-enter-admin');
-  const btnEmployee = document.getElementById('btn-enter-employee');
+  const form = document.getElementById('auth-form');
+  const btnEmployee = document.getElementById('btn-employee-view');
   const authSection = document.getElementById('section-auth');
   const nav = document.getElementById('main-nav');
 
-  if (btnAdmin) {
-    btnAdmin.addEventListener('click', () => {
-      let pwd = prompt('Yönetici şifresini girin:');
-      if (pwd === null) return;
-      pwd = pwd.trim();
-      if (pwd === '844830') {
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const password = document.getElementById('admin-pass').value;
+
+      // Yönetici şifresi kontrolü
+      if (password === 'adnan123') { // Şifreyi istediğinizle değiştirin
         currentMode = 'admin';
         document.body.classList.remove('employee-view');
-        if (authSection) authSection.style.display = 'none';
+        if (authSection) authSection.classList.remove('active');
         if (nav) nav.style.display = 'flex';
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.getElementById('section-daily').classList.add('active');
@@ -746,9 +747,10 @@ function setupAuth() {
       currentMode = 'employee';
       document.body.classList.add('employee-view');
       if (nav) nav.style.display = 'none';
-      if (authSection) authSection.style.display = 'none';
+      if (authSection) authSection.classList.remove('active');
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.getElementById('section-employee').classList.add('active');
+      renderEmployeeReport(); // Personel görünümüne girince raporu yükle
     });
   }
 }
@@ -775,11 +777,10 @@ async function initApp() {
   setupDailyEvents();
   setupWorkerEvents();
   setupDeductionEvents();
-  setupEmployeeEvents();
-  renderAll();
-  subscribeRealtime();
+  setupEmployeeReportEvents();
+
+  // İlk yüklemede, eğer yönetici şifresi girilmemişse, Giriş ekranını göster.
+  goHome();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initApp();
-});
+initApp();
