@@ -5,7 +5,6 @@
   <title>Adnan Tatlı Taşeron - Maaş Takip</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- PWA için (istersen kullanırsın) -->
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
@@ -307,45 +306,38 @@
       margin-top: 6px;
     }
 
-    thead {
-      background: #eff3ff;
-    }
-
-    th, td {
-      padding: 6px 6px;
+    th {
       text-align: left;
-      border-bottom: 1px solid #e5e7eb;
+      font-weight: 600;
+      padding: 8px 6px;
+      border-bottom: 2px solid var(--border-soft);
+      color: var(--text-sub);
+      font-size: 0.75rem;
       white-space: nowrap;
     }
 
-    th {
-      font-weight: 600;
-      font-size: 0.76rem;
-      color: var(--text-sub);
+    td {
+      padding: 8px 6px;
+      border-bottom: 1px solid #e9eef6;
+      vertical-align: middle;
     }
 
-    tbody tr:nth-child(even) {
-      background: #f9fafb;
+    td input {
+      padding: 4px 8px;
+      font-size: 0.8rem;
     }
 
-    .text-right { text-align: right; }
     .text-center { text-align: center; }
-
+    .text-right { text-align: right; }
     .mt-4 { margin-top: 4px; }
     .mt-8 { margin-top: 8px; }
     .mt-12 { margin-top: 12px; }
-
     .flex { display: flex; align-items: center; }
     .flex-wrap { flex-wrap: wrap; }
     .justify-between { justify-content: space-between; }
     .gap-6 { gap: 6px; }
     .gap-8 { gap: 8px; }
-
-    .status-msg {
-      font-size: 0.75rem;
-      margin-top: 6px;
-    }
-
+    .status-msg { font-size: 0.75rem; margin-top: 6px; }
     .status-ok { color: var(--success); }
     .status-error { color: var(--danger); }
 
@@ -425,66 +417,94 @@
 
     @media print {
       body { background: #ffffff; }
-      header, nav, .no-print { display: none !important; }
-      .app-shell { max-width: 100%; padding: 0; }
-      .card { box-shadow: none; border-radius: 0; border: none; padding: 8px 0; }
-      table { font-size: 0.72rem; }
+      header, nav, .no-print, #section-auth { display: none !important; }
+      .app-shell {
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+      }
+      .card {
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+      }
+      .card-subtitle { margin-top: 12px; }
+      .summary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .summary-card {
+        background: #fff;
+        border: 1px solid var(--border-soft);
+        padding: 10px;
+      }
+      .helper-text { display: none; }
+      .text-center { text-align: left; }
     }
   </style>
+
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 </head>
 <body>
   <div class="app-shell">
-    <header class="no-print">
+    <header>
       <div>
         <div class="app-title">Adnan Tatlı Taşeron</div>
-        <div class="app-subtitle">Günlük işçi çalışma ve maaş takip uygulaması</div>
+        <div class="app-subtitle">Maaş Takip Sistemi</div>
       </div>
-      <button id="btn-home-badge" class="badge" type="button">
-        <span id="firebase-status-dot" class="status-dot status-error"></span>
-        <span>Yönetici &amp; Personel Giriş</span>
-      </button>
+      <div class="flex gap-6">
+        <span id="firebase-status-dot" class="status-dot" title="Firebase Bağlantı Durumu"></span>
+        <button id="btn-home-badge" class="badge no-print" style="cursor: pointer;">
+          <span class="material-icons-round" style="font-size: 0.8rem;">home</span>
+          Ana Sayfa
+        </button>
+      </div>
     </header>
 
-    <!-- Yönetici nav bar (şifre doğruysa açılacak) -->
-    <nav id="main-nav" class="no-print">
-      <button class="nav-btn" id="nav-daily">
-        <span class="icon">🕒</span><span>Günlük Kayıt</span>
-      </button>
-      <button class="nav-btn" id="nav-workers">
-        <span class="icon">👷</span><span>İşçi Ayarları</span>
-      </button>
-      <button class="nav-btn" id="nav-deductions">
-        <span class="icon">📉</span><span>Kesinti / Ödül</span>
-      </button>
-      <button class="nav-btn" id="nav-employee">
-        <span class="icon">📊</span><span>Personel Görünümü</span>
-      </button>
-    </nav>
-
-    <!-- ANA MENÜ (sadece 2 seçenek) -->
     <section id="section-auth" class="section active">
       <div class="card">
         <div class="card-header">
-          <div>
-            <div class="card-title">Giriş Seçimi</div>
-            <div class="card-subtitle">
-              Yönetici olarak maaşları düzenleyin veya personel olarak bordronuzu görüntüleyin.
-            </div>
+          <div class="card-title">Giriş Yap</div>
+          <div class="pill">Yetkili Girişi</div>
+        </div>
+        <form id="auth-form" class="mt-4">
+          <label for="admin-pass">Yönetici Şifresi</label>
+          <input id="admin-pass" type="password" placeholder="Şifre" required />
+          <div class="home-actions" style="margin-top:14px;">
+            <button id="btn-login" class="btn btn-primary" type="submit">
+              <span class="material-icons-round">vpn_key</span>
+              Giriş Yap
+            </button>
+            <button id="btn-employee-view" class="btn btn-outline" type="button">
+              <span class="material-icons-round">person</span>
+              Personel Görüntüleme
+            </button>
           </div>
-        </div>
-        <div class="home-actions">
-          <button id="btn-enter-admin" class="btn btn-primary" type="button">
-            🔐 Yönetici Girişi
-          </button>
-          <button id="btn-enter-employee" class="btn btn-outline" type="button">
-            👷 Personel Görünümü
-          </button>
-        </div>
-
+        </form>
       </div>
     </section>
 
-    <!-- GÜNLÜK KAYIT (YÖNETİCİ) -->
+    <nav id="main-nav">
+      <button id="nav-daily" class="nav-btn active" data-target="section-daily" type="button">
+        <span class="material-icons-round icon">today</span>
+        Günlük Kayıt
+      </button>
+      <button id="nav-workers" class="nav-btn" data-target="section-workers" type="button">
+        <span class="material-icons-round icon">people</span>
+        İşçi Listesi
+      </button>
+      <button id="nav-deductions" class="nav-btn" data-target="section-deductions" type="button">
+        <span class="material-icons-round icon">payment</span>
+        Kesinti/Ödül
+      </button>
+      <button id="nav-employee" class="nav-btn" data-target="section-employee" type="button">
+        <span class="material-icons-round icon">receipt</span>
+        Personel Rapor
+      </button>
+    </nav>
+
+
     <section id="section-daily" class="section">
       <div class="card">
         <div class="card-header">
@@ -496,7 +516,6 @@
             Yönetici Paneli
           </div>
         </div>
-
         <div class="form-grid two-cols">
           <div>
             <label for="daily-date">Tarih</label>
@@ -521,14 +540,12 @@
             </div>
           </div>
         </div>
-
         <div class="mt-8">
           <div class="pill" style="width:100%; justify-content:space-between;">
             <span>Hesaplanan Günlük Ücret</span>
             <strong id="daily-calculated-wage">0,00 TL</strong>
           </div>
         </div>
-
         <div class="mt-8 flex gap-8 justify-between">
           <button id="btn-save-daily" class="btn btn-primary">
             💾 Kaydı Kaydet
@@ -565,58 +582,60 @@
       </div>
     </section>
 
-    <!-- İŞÇİ AYARLARI (YÖNETİCİ) -->
     <section id="section-workers" class="section">
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">İşçi Listesi & 8 Saatlik Ücretler</div>
-            <div class="card-subtitle">
-              Her işçi için günlük 8 saatlik ücret girin. Saatlik ücret otomatik hesaplanır.
-            </div>
+            <div class="card-title">İşçi Listesi ve Ücretleri</div>
+            <div class="card-subtitle">İşçi adlarını ve 8 saatlik temel günlük ücretlerini yönetin.</div>
           </div>
-          <button id="btn-add-worker" class="btn btn-outline btn-sm no-print">
-            ➕ Yeni İşçi
+          <button id="btn-add-worker" class="btn btn-sm btn-outline no-print" type="button">
+            ➕ Yeni İşçi Ekle
           </button>
         </div>
 
-        <div style="overflow-x:auto;">
+        <div class="mt-4" style="overflow-x:auto;">
           <table>
             <thead>
               <tr>
                 <th>İşçi Adı</th>
                 <th>8 Saatlik Ücret (TL)</th>
-                <th class="text-center no-print">İşlem</th>
+                <th class="text-center no-print">Eylem</th>
               </tr>
             </thead>
-            <tbody id="workers-table"></tbody>
+            <tbody id="workers-table">
+              <tr><td colspan="3" class="text-center">Henüz işçi yok.</td></tr>
+            </tbody>
           </table>
         </div>
-        <div class="mt-8 flex justify-between gap-8">
-          <button id="btn-save-workers" class="btn btn-primary no-print">
-            💾 İşçi Ayarlarını Kaydet
+
+        <div class="mt-12 flex gap-8 justify-between">
+          <button id="btn-save-workers" class="btn btn-primary no-print" type="button">
+            💾 Kaydet
           </button>
           <div id="workers-status" class="status-msg"></div>
         </div>
       </div>
     </section>
 
-    <!-- KESİNTİ / ÖDÜL (YÖNETİCİ) -->
     <section id="section-deductions" class="section">
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Kesinti & Ödül Ayarları</div>
-            <div class="card-subtitle">
-              Her işçi için aylık yüzdelik / sabit kesinti ve ödülleri tanımlayın.
-            </div>
+            <div class="card-title">Kesinti ve Ödül İşlemleri</div>
+            <div class="card-subtitle">İşçiye özel kesinti veya ödülleri girin.</div>
+          </div>
+          <div class="pill">
+            Yönetici Paneli
           </div>
         </div>
-
         <div class="form-grid">
           <div>
             <label for="ded-worker">İşçi Seç</label>
             <select id="ded-worker"></select>
+            <div class="helper-text">
+              Sadece seçilen işçiye ait kesinti/ödül listesi gösterilir.
+            </div>
           </div>
         </div>
 
@@ -625,11 +644,11 @@
           <div class="form-grid two-cols">
             <div>
               <label for="ded-percent-name">Ad / Açıklama</label>
-              <input id="ded-percent-name" type="text" placeholder="Örn: Avans, Yemek, Ceza" />
+              <input id="ded-percent-name" type="text" placeholder="Örn: Avans, Vergi" />
             </div>
             <div>
               <label for="ded-percent-value">Yüzde (%)</label>
-              <input id="ded-percent-value" type="number" step="0.1" min="0" placeholder="Örn: 10" />
+              <input id="ded-percent-value" type="number" step="0.1" min="0" max="100" placeholder="Örn: 10 veya 5.5" />
             </div>
           </div>
           <div class="mt-4 flex gap-8 justify-between">
@@ -661,82 +680,90 @@
         </div>
 
         <div class="mt-8">
-          <div class="card-subtitle" style="margin-bottom:4px;">Ödüller / Primler (TL)</div>
+          <div class="card-subtitle" style="margin-bottom:4px;">Ek Ödüller / Primler (TL)</div>
           <div class="form-grid two-cols">
             <div>
-              <label for="bonus-name">Ad / Açıklama</label>
-              <input id="bonus-name" type="text" placeholder="Örn: Performans Primi" />
+              <label for="ded-bonus-name">Ad / Açıklama</label>
+              <input id="ded-bonus-name" type="text" placeholder="Örn: Prim, Bayram Ödülü" />
             </div>
             <div>
-              <label for="bonus-value">Tutar (TL)</label>
-              <input id="bonus-value" type="number" step="0.01" min="0" placeholder="Örn: 750" />
+              <label for="ded-bonus-value">Tutar (TL)</label>
+              <input id="ded-bonus-value" type="number" step="0.01" min="0" placeholder="Örn: 1000" />
             </div>
           </div>
           <div class="mt-4 flex gap-8 justify-between">
             <button id="btn-add-bonus" class="btn btn-outline btn-sm no-print" type="button">
-              ➕ Ödül / Prim Ekle
+              ➕ Ödül Ekle
             </button>
           </div>
           <div id="bonus-list" class="chip-row mt-4"></div>
         </div>
+
       </div>
     </section>
 
-    <!-- PERSONEL GÖRÜNÜMÜ (YÖNETİCİ + PERSONEL) -->
     <section id="section-employee" class="section">
-      <div class="card">
+      <div class="card no-print">
         <div class="card-header">
           <div>
-            <div class="card-title">Personel Maaş Bordrosu</div>
-            <div class="card-subtitle">
-              İşçi, adını ve ayı seçerek kendi 1 aylık raporunu görebilir.
-            </div>
+            <div class="card-title">Personel Maaş Raporu</div>
+            <div class="card-subtitle">Seçilen personel ve ay için maaş özeti ve detayları.</div>
           </div>
-          <button id="btn-back-home" class="btn btn-outline btn-sm no-print" type="button">
-            ⏪ Ana Menü
-          </button>
         </div>
-
         <div class="form-grid two-cols">
           <div>
-            <label for="emp-worker">İşçi Adı</label>
+            <label for="emp-worker">Personel Seç</label>
             <select id="emp-worker"></select>
           </div>
           <div>
-            <label for="emp-month">Ay Seçin</label>
+            <label for="emp-month">Ay Seç</label>
             <input id="emp-month" type="month" />
           </div>
         </div>
-
-        <div class="mt-8 flex gap-8 justify-between no-print">
+        <div class="home-actions mt-8">
           <button id="btn-show-report" class="btn btn-primary" type="button">
-            📊 Raporu Göster
+            🔎 Raporu Görüntüle
           </button>
-          <button id="btn-print" class="btn btn-outline" type="button">
-            🧾 PDF / Yazdır
+          <button id="btn-print-report" class="btn btn-outline no-print" type="button">
+            📄 PDF / Yazdır
+          </button>
+          <button id="btn-back-home" class="btn btn-danger no-print" type="button">
+            Çıkış Yap
+          </button>
+        </div>
+      </div>
+
+      <div id="employee-report-content" style="display:none;" class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title" id="report-title-name"></div>
+            <div class="card-subtitle" id="report-title-month"></div>
+          </div>
+          <button id="report-back-button" class="btn btn-outline btn-sm no-print" type="button">
+            <span class="material-icons-round" style="font-size: 0.8rem;">arrow_back</span>
+            Geri
           </button>
         </div>
 
-        <div id="emp-summary" class="mt-8">
+        <div id="emp-summary">
+          <div class="card-subtitle">Özet Tablo</div>
           <div class="summary-grid">
             <div class="summary-card">
-              <div class="summary-label">Toplam Brüt</div>
+              <div class="summary-label">Brüt Ücret</div>
               <div id="sum-gross" class="summary-value">0,00 TL</div>
             </div>
             <div class="summary-card">
-              <div class="summary-label">Yüzdelik Kesintiler</div>
+              <div class="summary-label">Yüzdelik Kesinti</div>
               <div id="sum-percent" class="summary-value negative">0,00 TL</div>
             </div>
             <div class="summary-card">
-              <div class="summary-label">Sabit Kesintiler</div>
+              <div class="summary-label">Sabit Kesinti</div>
               <div id="sum-fixed" class="summary-value negative">0,00 TL</div>
             </div>
             <div class="summary-card">
-              <div class="summary-label">Ödüller / Prim</div>
+              <div class="summary-label">Ödül/Prim</div>
               <div id="sum-bonus" class="summary-value positive">0,00 TL</div>
             </div>
-          </div>
-          <div class="mt-8 summary-grid">
             <div class="summary-card" style="grid-column: span 2;">
               <div class="summary-label">Net Maaş</div>
               <div id="sum-net" class="summary-value positive" style="font-size:1rem;">0,00 TL</div>
@@ -776,6 +803,8 @@
     </section>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js"></script>
   <script type="module" src="firebase-app.js"></script>
 </body>
 </html>
