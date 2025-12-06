@@ -2,6 +2,7 @@
 import { firebaseConfig } from './firebase-config.js';
 
 // **DÜZELTME: Firebase modül importları kaldırıldı ve global 'firebase' nesnesinden erişiliyor.**
+// Bu, bir önceki adımda yapılmıştı. Kontrol amaçlı tekrar ekleniyor.
 /*
 import {
   initializeApp
@@ -79,7 +80,6 @@ function ensureShape(data) {
   data.workers.forEach(w => {
     if (!w.deductions) w.deductions = {};
     w.deductions.percent = Array.isArray(w.deductions.percent) ? w.deductions.percent : [];
-    w.deductions.fixed = Array.isArray(w.deductions.fixed) ? data.workers[0].deductions.fixed : [];
     w.deductions.fixed = Array.isArray(w.deductions.fixed) ? w.deductions.fixed : [];
     w.deductions.bonus = Array.isArray(w.deductions.bonus) ? w.deductions.bonus : [];
   });
@@ -101,13 +101,14 @@ async function loadInitialData() {
     if (snap.exists()) {
       appData = ensureShape(snap.data());
       setFirebaseStatus(true);
-      setFirebaseStatus(true);
     } else {
       appData = cloneDefault();
       await setDoc(ref, appData);
+      setFirebaseStatus(true); // Veri yazıldıktan sonra başarılı say
     }
   } catch (e) {
     console.error('Firestore okunamadı, localStorage yedeğine dönülüyor:', e);
+    setFirebaseStatus(false); // Bağlantı başarısız
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) appData = ensureShape(JSON.parse(raw));
@@ -557,6 +558,7 @@ function renderEmployeeReport() {
   // Başlıkları güncelle
   document.getElementById('report-title-name').textContent = worker.name;
   const [year, month] = selectedMonth.split('-');
+  // Ay adını ve yılı Türkçe olarak al
   const monthName = new Date(year, month - 1, 1).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
   document.getElementById('report-title-month').textContent = `${monthName} Maaş Raporu`;
 
@@ -667,7 +669,7 @@ function setupEmployeeReportEvents() {
   // Varsayılan olarak bu ayı seç
   const now = new Date();
   const yyyy = now.getFullYear();
-  const mm = (now.getMonth() + 1).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0'); // Düzeltme: padStart için String'e çevrildi
   if (monthInput) monthInput.value = `${yyyy}-${mm}`;
 
   if (btnShow) {
@@ -711,10 +713,13 @@ function goHome() {
 
   document.body.classList.remove('employee-view');
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  
+  // Düzeltme: Eğer ana sayfa butonu tıklanırsa giriş alanını temizle ve göster
+  const adminPass = document.getElementById('admin-pass');
+  if (adminPass) adminPass.value = ''; 
 
   if (authSection) authSection.classList.add('active');
   if (nav) nav.style.display = 'none';
-  document.getElementById('admin-pass').value = '';
 }
 
 function setupAuth() {
@@ -728,14 +733,15 @@ function setupAuth() {
       e.preventDefault();
       const password = document.getElementById('admin-pass').value;
 
-      // Yönetici şifresi kontrolü
-      if (password === 'adnan123') { // Şifreyi istediğinizle değiştirin
+      // **DÜZELTME: Yönetici şifresi '830844' olarak değiştirildi.**
+      if (password === '830844') { 
         currentMode = 'admin';
         document.body.classList.remove('employee-view');
         if (authSection) authSection.classList.remove('active');
         if (nav) nav.style.display = 'flex';
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.getElementById('section-daily').classList.add('active');
+        renderAll(); // Verilerin yüklenmesini sağlamak için
       } else {
         alert('Hatalı şifre');
       }
@@ -750,7 +756,8 @@ function setupAuth() {
       if (authSection) authSection.classList.remove('active');
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.getElementById('section-employee').classList.add('active');
-      renderEmployeeReport(); // Personel görünümüne girince raporu yükle
+      // **DÜZELTME: Personel görünümüne girince raporu yüklemesi eklendi.**
+      renderEmployeeReport(); 
     });
   }
 }
@@ -781,6 +788,13 @@ async function initApp() {
 
   // İlk yüklemede, eğer yönetici şifresi girilmemişse, Giriş ekranını göster.
   goHome();
+  
+  // Firebase bağlantısı başarılıysa ve yönetici modunda değilse, giriş ekranını göster
+  // Başarılı veya başarısız olsun, initApp sonunda renderAll() çağrılır.
+  renderAll(); 
+  
+  // Realtime dinlemeyi başlat
+  subscribeRealtime();
 }
 
 initApp();
