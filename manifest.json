@@ -1,9 +1,0 @@
-{
-  "name": "Mesaj PWA",
-  "short_name": "Mesaj",
-  "start_url": "/Mesaj/",
-  "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#020617",
-  "icons": []
-}
